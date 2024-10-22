@@ -1093,7 +1093,7 @@ def expectation(T, a, mu=None):
     >>> a = np.array([1.0, 0.0, 1.0])
     >>> m_a = expectation(T, a)
     >>> m_a # doctest: +ELLIPSIS
-    0.909090909...
+    np.float64(0.909090909...
 
     """
     # check if square matrix and remember size

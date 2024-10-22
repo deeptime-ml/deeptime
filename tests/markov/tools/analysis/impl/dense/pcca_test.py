@@ -117,16 +117,16 @@ class TestPCCA(unittest.TestCase):
         P = np.loadtxt(os.path.split(__file__)[0] + '/../../P_rev_251x251.dat')
         # n=2
         chi = pcca(P, 2)
-        assert (np.alltrue(chi >= 0))
-        assert (np.alltrue(chi <= 1))
+        assert (np.all(chi >= 0))
+        assert (np.all(chi <= 1))
         # n=3
         chi = pcca(P, 3)
-        assert (np.alltrue(chi >= 0))
-        assert (np.alltrue(chi <= 1))
+        assert (np.all(chi >= 0))
+        assert (np.all(chi <= 1))
         # n=4
         chi = pcca(P, 4)
-        assert (np.alltrue(chi >= 0))
-        assert (np.alltrue(chi <= 1))
+        assert (np.all(chi >= 0))
+        assert (np.all(chi <= 1))
 
     def test_pcca_coarsegrain(self):
         # fine-grained transition matrix

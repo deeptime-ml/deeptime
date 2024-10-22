@@ -10,6 +10,6 @@ steps:
   displayName: 'Update and install dependencies'
   continueOnError: false
 - bash: |
-    conda build devtools --python 3.11 --numpy 1.21
+    conda build devtools --python 3.11 --numpy 2.0.0
   displayName: 'Build and test'
   continueOnError: false

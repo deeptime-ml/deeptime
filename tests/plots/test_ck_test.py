@@ -43,7 +43,7 @@ def test_sanity_vamp(fractional):
 
     if fractional:
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", np.ComplexWarning)
+            warnings.simplefilter("ignore", np.exceptions.ComplexWarning)
             plot_ck_test(models[0].ck_test(models))
     else:
         plot_ck_test(models[0].ck_test(models))
