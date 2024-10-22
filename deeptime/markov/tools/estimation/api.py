@@ -281,7 +281,7 @@ def girsanov_reweighted_count_matrix(dtraj, lag, reweighting_factors,
 
     >>> C_sliding.toarray()
     array([[1., 2.],
-           [0., 1.]])
+           [1., 1.]])
 
     """
     # convert dtraj input, if it contains out of nested python lists to
