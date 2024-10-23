@@ -5,7 +5,7 @@ import pytest
 from numpy.testing import assert_, assert_equal, assert_raises
 
 from deeptime.util.data import TrajectoryDataset
-from deeptime.util.types import to_dataset
+from deeptime.util.types import to_dataset, ensure_reweighting_factors_tuple
 
 
 @contextmanager
@@ -40,3 +40,15 @@ def test_to_dataset(data, lagtime, expectation):
         assert_equal(data[0].shape[1], 5)
         assert_equal(len(data[1]), len(ds))
         assert_equal(data[1].shape[1], 5)
+
+testdata = [
+    (([np.ones((6,))],[np.ones((6,))]),([np.ones((6,))],[np.ones((6,))])),
+    ((np.ones((6,)),np.ones((6,))),([np.ones((6,))],[np.ones((6,))])),
+    ([[np.ones((6,))],[np.ones((6,))]],([np.ones((6,))],[np.ones((6,))])), 
+    ([np.ones((6,)),np.ones((6,))],([np.ones((6,))],[np.ones((6,))])),
+    (([np.ones((6,)),np.ones((6,)),np.ones((6,))],[np.ones((6,)),np.ones((6,)),np.ones((6,))]),([np.ones((6,)),np.ones((6,)),np.ones((6,))],[np.ones((6,)),np.ones((6,)),np.ones((6,))])),
+    ([[np.ones((6,)),np.ones((6,))],[np.ones((6,)),np.ones((6,))]],([np.ones((6,)),np.ones((6,))],[np.ones((6,)),np.ones((6,))]))
+]
+@pytest.mark.parametrize("reweighting_factors, output", testdata)
+def test_ensure_reweighting_factors_tuple(reweighting_factors, output):
+    assert_equal(ensure_reweighting_factors_tuple(reweighting_factors), output)
