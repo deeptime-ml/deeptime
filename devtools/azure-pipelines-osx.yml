@@ -2,7 +2,7 @@ jobs:
 - job:
   displayName: "OS X"
   pool:
-    vmImage: 'macOS-12'
+    vmImage: 'macOS-latest'
   timeoutInMinutes: 360
 
   strategy:
