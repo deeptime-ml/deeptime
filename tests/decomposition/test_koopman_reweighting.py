@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-import pkg_resources
+import importlib.resources
 
 from deeptime.covariance import KoopmanWeightingModel
 from deeptime.util.data import timeshifted_split
@@ -38,7 +38,7 @@ class TestKoopmanTICA(unittest.TestCase):
             cls.chi[2 * n:2 * (n + 1), n] = 1.0
 
         # Load simulations:
-        f = np.load(pkg_resources.resource_filename(__name__, "data/test_data_koopman.npz"))
+        f = np.load(importlib.resources.files(__name__).joinpath("data/test_data_koopman.npz"))
         trajs = [f[key] for key in f.keys()]
         cls.data = [cls.chi[traj, :] for traj in trajs]
 
