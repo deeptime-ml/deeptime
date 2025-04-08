@@ -44,10 +44,9 @@ handles = [scatter_handle, handle]
 def update(i):
     out = [scatter_handle]
     handles[0].set_offsets(trajs[:, i])
-    for tp in handles[1].collections:
-        tp.remove()
+    handles[1].remove()
     handles[1] = ax.contourf(*xy, l[i], vmin=vmin, vmax=vmax, cmap=cmap)
-    out += handles[1].collections
+    out += [handles[1]]
     return out
 
 

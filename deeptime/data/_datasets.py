@@ -16,7 +16,7 @@ def double_well_discrete():
     The discrete trajectory contains 100000 steps, discrete time step dt=10. The result object allows access to
     discretizations of varying quality as well as gives opportunity to synthetically generate more data.
 
-    .. plot:: datasets/sdes/plot_double_well_discrete.py
+    .. plot:: out/datasets/sdes/plot_double_well_discrete.py
 
     Returns
     -------
@@ -39,7 +39,7 @@ def ellipsoids(laziness: float = 0.97, seed=None):
     benchmark and demonstration purposes, this observation chain can be rotated into a higher dimensional space
     and equipped with additional noise.
 
-    .. plot:: datasets/other/plot_ellipsoids.py
+    .. plot:: out/datasets/other/plot_ellipsoids.py
 
     Parameters
     ----------
@@ -140,7 +140,7 @@ def drunkards_walk(grid_size: Tuple[int, int] = (10, 10),
     and uniform two-dimensional jump probabilities in between. The grid is of size :math:`n\times m` and a point
     :math:`(i,j)` is identified with state :math:`i+nj` in the transition matrix.
 
-    .. plot:: datasets/other/plot_drunkards_walk.py
+    .. plot:: out/datasets/other/plot_drunkards_walk.py
 
     Parameters
     ----------
@@ -278,7 +278,7 @@ def birth_death_chain(q, p, sparse=False):
     of the last state :math:`i=n`. The sum of the probabilities must be bounded component-wise, i.e.,
     :math:`q_i + p_i \leq 1\;\forall i=1,\ldots ,n`.
 
-    .. plot:: datasets/sdes/plot_birth_death_chain.py
+    .. plot:: out/datasets/sdes/plot_birth_death_chain.py
 
     Parameters
     ----------
@@ -301,7 +301,7 @@ def tmatrix_metropolis1d(energies, d=1.0):
     r"""Transition matrix describing the Metropolis chain jumping
     between neighbors in a discrete 1D energy landscape.
 
-    .. plot:: datasets/sdes/plot_tmatrix_1d.py
+    .. plot:: out/datasets/sdes/plot_tmatrix_1d.py
 
     Parameters
     ----------
@@ -351,7 +351,7 @@ def sqrt_model(n_samples, seed=None):
     We sample a hidden state trajectory and sqrt-masked emissions in two
     dimensions such that the two metastable states are not linearly separable.
 
-    .. plot:: datasets/other/plot_sqrt_model.py
+    .. plot:: out/datasets/other/plot_sqrt_model.py
 
     Parameters
     ----------
@@ -489,7 +489,7 @@ def quadruple_well(h: float = 1e-3, n_steps: int = 10000):
 
     The inverse temperature is set to be :math:`\beta = 4`.
 
-    .. plot:: datasets/sdes/plot_quadruple_well.py
+    .. plot:: out/datasets/sdes/plot_quadruple_well.py
 
     Parameters
     ----------
@@ -545,7 +545,7 @@ def quadruple_well_asymmetric(h=1e-3, n_steps=10000):
 
     The stochastic force parameter is set to :math:`\sigma = 0.6`.
 
-    .. plot:: datasets/sdes/plot_quadruple_well_asymmetric.py
+    .. plot:: out/datasets/sdes/plot_quadruple_well_asymmetric.py
 
     Parameters
     ----------
@@ -605,7 +605,7 @@ def triple_well_2d(h=1e-5, n_steps=10000):
         &\quad + \frac{2}{10} x^4 + \frac{2}{10}\left(y-\frac{1}{3}\right)^4.
         \end{aligned}
 
-    .. plot:: datasets/sdes/plot_triple_well_2d.py
+    .. plot:: out/datasets/sdes/plot_triple_well_2d.py
 
     Parameters
     ----------
@@ -741,7 +741,7 @@ def ornstein_uhlenbeck(h=1e-3, n_steps=500):
 
     with parameters :math:`\alpha=1` and :math:`\beta=4`.
 
-    .. plot:: datasets/sdes/plot_ornstein_uhlenbeck.py
+    .. plot:: out/datasets/sdes/plot_ornstein_uhlenbeck.py
 
     Parameters
     ----------
@@ -798,7 +798,7 @@ def prinz_potential(h=1e-5, n_steps=500, temperature_factor=1., mass=1., damping
 
     The locations of the minima can be accessed via the `minima` attribute.
 
-    .. plot:: datasets/sdes/plot_prinz.py
+    .. plot:: out/datasets/sdes/plot_prinz.py
 
     Parameters
     ----------
@@ -873,7 +873,7 @@ def triple_well_1d(h=1e-3, n_steps=500):
 
         V(x) = 5 - 24.82 x + 41.4251 x^2 - 27.5344 x^3 + 8.53128 x^4 - 1.24006 x^5 + 0.0684 x^6.
 
-    .. plot:: datasets/sdes/plot_triple_well_1d.py
+    .. plot:: out/datasets/sdes/plot_triple_well_1d.py
 
     Parameters
     ----------
@@ -907,7 +907,7 @@ def double_well_2d(h=1e-3, n_steps=10000, temperature_factor=1., mass=1., dampin
 
         V(x) = (x_1^2 - 1)^2 + x_2^2.
 
-    .. plot:: datasets/sdes/plot_double_well_2d.py
+    .. plot:: out/datasets/sdes/plot_double_well_2d.py
 
     Parameters
     ----------
@@ -1029,7 +1029,7 @@ def lorenz_system(h: float = 2e-5, n_steps: int = 100):
 
     with :math:`\sigma = 10`, :math:`\beta = 8/3`, and :math:`\rho = 28`.
 
-    .. plot:: datasets/odes/plot_lorenz_system.py
+    .. plot:: out/datasets/odes/plot_lorenz_system.py
 
     Parameters
     ----------
@@ -1067,7 +1067,7 @@ def thomas_attractor(b: float = 0.15, h: float = 1e-3, n_steps: int = 1000):
     with a free parameter :math:`b`, determining the dissipativity of the system. A value of :math:`b > 1` yields
     a single stable equilibrium, at values of :math:`b \leq 1` the system has at least two attractive fixed points.
 
-    .. plot:: datasets/odes/plot_thomas_attractor.py
+    .. plot:: out/datasets/odes/plot_thomas_attractor.py
 
     Parameters
     ----------
@@ -1106,7 +1106,7 @@ def custom_sde(dim: int, rhs: Callable, sigma: np.ndarray, h: float, n_steps: in
 
         \sigma(t, X_t) = \sigma \in\mathbb{R}^{\mathrm{dim}\times\mathrm{dim}}.
 
-    .. plot:: datasets/sdes/plot_custom_sde.py
+    .. plot:: out/datasets/sdes/plot_custom_sde.py
 
     Parameters
     ----------
@@ -1184,7 +1184,7 @@ def custom_ode(dim: int, rhs: Callable, h: float, n_steps: int):
     where the right-hand side :math:`F` should map an :code:`dim`-dimensional array-like object to an
     :code:`dim`-dimensional array-like object.
 
-    .. plot:: datasets/sdes/plot_custom_ode.py
+    .. plot:: out/datasets/odes/plot_custom_ode.py
 
     Parameters
     ----------

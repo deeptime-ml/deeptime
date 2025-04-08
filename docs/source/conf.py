@@ -67,6 +67,10 @@ extensions = [
     #'sphinx_gallery.load_style'
 ]
 
+nbsphinx_prolog = ""
+nbsphinx_epilog = ""
+nbsphinx_execute = 'never'
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -74,7 +78,12 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 # Exclude build directory and Jupyter backup files:
-exclude_patterns = ['_build', '**.ipynb_checkpoints', '**/notebooks', '*.ipynb']
+exclude_patterns = [
+    '_build',
+    "out/examples/**/*.ipynb",
+    "out/datasets/**/*.py",
+    '**/*.ipynb_checkpoints',
+]
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -118,17 +127,19 @@ sphinx_gallery_conf = {
     ],
     'within_subsection_order': ExampleTitleSortKey,
     'gallery_dirs': [
-        'examples',
-        'datasets/odes',
-        'datasets/sdes',
-        'datasets/other'
+        'out/examples',
+        'out/datasets/odes',
+        'out/datasets/sdes',
+        'out/datasets/other'
     ],  # path to where to save gallery generated output
     'line_numbers': True,
     'show_memory': True,
     'capture_repr': (),
     'matplotlib_animations': True,
     'download_all_examples': False,
-    'show_signature': False
+    'show_signature': False,
+    'log_level': {'backreference_missing': 'info'},
+    "notebook_extensions": {}
 }
 
 plot_rcparams = {
@@ -233,7 +244,6 @@ def skip(app, what, name, obj, skip, options):
 # NumpyDocstring._unpatched_parse = NumpyDocstring._parse
 # NumpyDocstring._parse = patched_parse
 
-
 def setup(app: Sphinx):
     app.connect('env-get-outdated', env_get_outdated)
     app.add_css_file('custom.css')
@@ -244,10 +254,6 @@ def setup(app: Sphinx):
     app.add_js_file('d3-legend.min.js')
     app.connect("autodoc-skip-member", skip)
 
+    app.setup_extension('sphinx_gallery.gen_gallery')
     if app.tags.has('notebooks'):
-        global katex_prerender
-        global exclude_patterns
-        # katex_prerender = True
-        exclude_patterns.remove('**/notebooks')
-        exclude_patterns.remove('*.ipynb')
         app.setup_extension('nbsphinx')

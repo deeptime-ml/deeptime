@@ -420,9 +420,9 @@ def plot_adjacency(adjacency_matrix, positions: Optional[np.ndarray] = None, lay
                              f"was of shape {positions.shape}.")
 
     if issparse(adjacency_matrix):
-        graph = nx.from_scipy_sparse_matrix(adjacency_matrix)
+        graph = nx.from_scipy_sparse_array(adjacency_matrix)
     else:
-        graph = nx.from_numpy_matrix(adjacency_matrix)
+        graph = nx.from_numpy_array(adjacency_matrix)
     if positions is not None:
         def layout(g):
             return dict(zip(g.nodes(), positions))

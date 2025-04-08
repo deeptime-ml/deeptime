@@ -6,11 +6,11 @@ Datasets
 
 Examples contained in the :mod:`deeptime.data` module.
 
-.. include:: datasets/odes/index.rst
+.. include:: out/datasets/odes/index.rst
     :start-after: :orphan:
 
-.. include:: datasets/sdes/index.rst
+.. include:: out/datasets/sdes/index.rst
     :start-after: :orphan:
 
-.. include:: datasets/other/index.rst
+.. include:: out/datasets/other/index.rst
     :start-after: :orphan:
