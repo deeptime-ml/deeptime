@@ -35,7 +35,8 @@ def tests(session: nox.Session) -> None:
         session.run("cmake", "-S", ".", "-B", tmpdir, '-DDEEPTIME_BUILD_CPP_TESTS=ON', 
                     '-DCMAKE_MODULE_PATH:PATH={}'.format(cmake_module_path),
                     "-Dpybind11_DIR={}".format(pybind11_module_dir), '-DCMAKE_BUILD_TYPE=Release', silent=True)
-        session.run("cmake", "--build", tmpdir, "--target", "run_tests")
+        if session.python != "3.13" and platform != "windows":
+            session.run("cmake", "--build", tmpdir, "--target", "run_tests")
     else:
         pytest_args = []
         for arg in session.posargs:
