@@ -431,7 +431,7 @@ def histogram2d_from_xy(x: np.ndarray, y: np.ndarray, bins=100, weights=None, de
 def energy2d(x: np.ndarray, y: np.ndarray, bins=100, kbt: float = 1., weights=None, shift_energy=True):
     r""" Compute a two-dimensional energy landscape based on data arrays `x` and `y`.
 
-    .. plot:: examples/plot_energy_surface.py
+    .. plot:: out/examples/plot_energy_surface.py
 
     This function assumes that the sampled data follows a Boltzmann distribution
 

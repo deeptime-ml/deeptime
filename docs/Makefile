@@ -16,8 +16,7 @@ help:
 
 clean:
 	bash -c "rm -rf source/api/generated"
-	bash -c "rm -rf source/examples"
-	bash -c "rm -rf source/datasets"
+	bash -c "rm -rf source/out"
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 html-noplot:

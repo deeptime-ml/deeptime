@@ -8,16 +8,16 @@ jobs:
       - template: checkout.yml
       - template: conda-setup+build.yml
 
-  - job: 'MacOS_with_conda'
-    pool:
-      vmImage: 'macOS-latest'
-    steps:
-      - bash: echo "##vso[task.prependpath]$CONDA/bin"
-        displayName: Add conda to PATH
-      - bash: sudo chown -R $USER $CONDA
-        displayName: Take ownership of conda installation
-      - template: checkout.yml
-      - template: conda-setup+build.yml
+#  - job: 'MacOS_with_conda'
+#    pool:
+#      vmImage: 'macOS-latest'
+#    steps:
+#      - bash: echo "##vso[task.prependpath]$CONDA/bin"
+#        displayName: Add conda to PATH
+#      #- bash: sudo chown -R $USER $CONDA
+#      #  displayName: Take ownership of conda installation
+#      - template: checkout.yml
+#      - template: conda-setup+build.yml
 
   - job: 'Windows_with_conda'
     pool:

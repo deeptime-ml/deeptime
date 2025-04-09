@@ -8,7 +8,7 @@ from ..base import Observable, BayesianModel
 def implied_timescales(models, n_its=None):
     r""" Converts a list of models to a :class:`ImpliedTimescales` object.
 
-    .. plot:: examples/plot_implied_timescales.py
+    .. plot:: out/examples/plot_implied_timescales.py
 
     Parameters
     ----------
@@ -209,7 +209,7 @@ def ck_test(models, observable: Observable, test_model=None, include_lag0=True, 
 
     such that :math:`k\tau = \tilde{\tau}`.
 
-    .. plot:: examples/plot_ck_test.py
+    .. plot:: out/examples/plot_ck_test.py
 
     Parameters
     ----------

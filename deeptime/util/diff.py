@@ -140,7 +140,7 @@ def tv_derivative(xs, ys, u0=None, alpha=10., tol=None, maxit=1000, fd_window_ra
     r""" Total-variation regularized derivative. Note that this is currently only implemented for one-dimensional
     functions. See :footcite:`chartrand2011numerical` for theory and algorithmic details.
 
-    .. plot:: examples/plot_tv_derivative.py
+    .. plot:: out/examples/plot_tv_derivative.py
 
     Parameters
     ----------

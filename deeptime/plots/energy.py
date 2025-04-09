@@ -44,7 +44,7 @@ def plot_energy2d(energies: EnergyLandscape2d, ax=None, levels=100, contourf_kws
     r""" Plot a two-dimensional energy surface. See :meth:`deeptime.util.energy2d` to obtain the energy estimation
     from data.
 
-    .. plot:: examples/plot_energy_surface.py
+    .. plot:: out/examples/plot_energy_surface.py
 
     Parameters
     ----------

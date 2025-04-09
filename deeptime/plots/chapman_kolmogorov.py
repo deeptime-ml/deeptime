@@ -99,7 +99,7 @@ def plot_ck_test(data: ChapmanKolmogorovTest, height=2.5, aspect=1.,
                  xlabel='lagtime (steps)', ylabel='probability', y01=True, sharey=True, **plot_kwargs):
     r""" Plot the Chapman Kolmogorov test.
 
-    .. plot:: examples/plot_ck_test.py
+    .. plot:: out/examples/plot_ck_test.py
 
     Parameters
     ----------

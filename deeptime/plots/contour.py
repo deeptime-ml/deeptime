@@ -8,7 +8,7 @@ def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=
     r"""Plot a two-dimensional contour map based on an interpolation over unordered
     data triplets :math:`(x, y)\mapsto z`.
 
-    .. plot:: examples/plot_contour2d_from_xyz.py
+    .. plot:: out/examples/plot_contour2d_from_xyz.py
 
     Parameters
     ----------
@@ -53,7 +53,7 @@ def plot_contour2d_from_xyz(x, y, z, n_bins=100, method='nearest', contourf_kws=
 def plot_density(x, y, n_bins=100, weights=None, avoid_zero_counts=False, contourf_kws=None, ax=None):
     r"""Plot a two-dimensional contour map based on a histogram over unordered data :math:`(x, y)`.
 
-    .. plot:: examples/plot_density.py
+    .. plot:: out/examples/plot_density.py
 
     Parameters
     ----------
