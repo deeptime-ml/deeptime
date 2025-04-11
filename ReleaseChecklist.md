@@ -1,0 +1,27 @@
+# Deeptime Release Checklist
+
+- [ ] all tests pass?
+- [ ] documentation builds fine?
+  - go into docs folder
+  - make sure deps are there `pip install ".[docs]"`
+  - `make html`
+- [ ] create a tag `git tag $version -a`
+- [ ] push the tag `git push --tags origin $version`
+- [ ] draft a release on github based on tag
+- [ ] pypi release:
+  - [ ] `python setup.py sdist` -> creates source tarball in `dist/`
+  - [ ] generate binary wheels for target platforms
+      - [ ] if there are new python versions, add them here: https://github.com/deeptime-ml/deeptime/blob/main/azure-cibuildwheel.yml
+      - [ ] enable pipeline deeptime build wheels https://dev.azure.com/clonker/deeptime/_build?definitionId=8
+      - [ ] download artifacts, put them into `dist/`
+  - [ ] upload source and binary releases with twine: `twine upload --skip-existing dist/*`
+- [ ] if all good, change github draft release to proper release
+- [ ] conda-forge
+  - merge pr if green!
+- [ ] update docs:
+    - [ ] install newly tagged version locally `pip install .`
+    - [ ] build docs `cd docs && make html`
+    - [ ] update docs
+        - [ ] clone https://github.com/deeptime-ml/deeptime-ml.github.io
+        - [ ] copy built docs into trunk and latest
+        - [ ] `git add -A && git commit -m 'update docs' && git push`
