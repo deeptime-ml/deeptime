@@ -52,6 +52,7 @@ jobs:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    environment: pypi
     permissions:
       id-token: write
     steps:
