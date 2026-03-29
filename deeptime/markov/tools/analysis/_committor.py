@@ -80,7 +80,7 @@ def forward_committor(T, A, B):
     """Equation (III)"""
     r[list(B)] = 1.0
 
-    u = solve(W, r) if not sparse.issparse(W) else spsolve(W, r)
+    u = solve(W, r) if not sparse.issparse(W) else spsolve(W.tocsc(), r)
     return u
 
 
@@ -143,6 +143,6 @@ def backward_committor(T, A, B, mu=None):
     """Equation (II)"""
     r[list(A)] = 1.0
 
-    u = solve(W, r) if not sparse.issparse(W) else spsolve(W, r)
+    u = solve(W, r) if not sparse.issparse(W) else spsolve(W.tocsc(), r)
 
     return u

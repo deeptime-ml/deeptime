@@ -379,7 +379,7 @@ def reactive_flux(transition_matrix: np.ndarray, source_states: Iterable[int], t
         raise ValueError('set A or B defines more states than the given transition matrix.')
 
     if transition_matrix_tolerance is not None and \
-            msmana.is_transition_matrix(transition_matrix, tol=transition_matrix_tolerance):
+            not msmana.is_transition_matrix(transition_matrix, tol=transition_matrix_tolerance):
         raise ValueError('given matrix T is not a transition matrix')
 
     # we can compute the following properties from either dense or sparse T

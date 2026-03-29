@@ -1,5 +1,5 @@
 import numpy as _np
-from scipy.sparse import csr_matrix, issparse
+from scipy.sparse import csr_matrix, lil_matrix, issparse
 
 from deeptime.util.sparse import remove_negative_entries
 
@@ -75,7 +75,9 @@ def flux_matrix(T, pi, qminus, qplus, netflux=True):
     if issparse(T):
         flux = T.multiply(qplus[None, ...]).multiply(pi[..., None]).multiply(qminus[..., None])
         # Remove self-fluxes
+        flux = flux.tolil()
         flux.setdiag(0)
+        flux = flux.tocsr()
         flux.eliminate_zeros()
     else:
         flux = pi[:, None] * qminus[:, None] * T * qplus[None, :]
@@ -159,7 +161,8 @@ def _flux_producers_consumers(F, rtol, atol, producers):
     else:
         net_abs = _np.maximum(influxes - outfluxes, 0)
     # net out flux relative
-    prod_rel = net_abs / (_np.maximum(outfluxes, influxes))
+    denom = _np.maximum(outfluxes, influxes)
+    prod_rel = _np.divide(net_abs, denom, out=_np.zeros_like(net_abs), where=denom > 0)
     # return all indexes that are produces in terms of absolute and relative tolerance
     return list(_np.where((net_abs > atol) * (prod_rel > rtol))[0])
 
@@ -240,7 +243,7 @@ def coarsegrain(F, sets):
     """
     nnew = len(sets)
     if issparse(F):
-        Fc = csr_matrix((nnew, nnew))
+        Fc = lil_matrix((nnew, nnew))
         Fin = F.tocsr()
     else:
         Fc = _np.zeros((nnew, nnew))
@@ -252,7 +255,7 @@ def coarsegrain(F, sets):
             J = list(sets[j])
             Fc[i, j] = (Fin[I, :][:, J]).sum()
             Fc[j, i] = (Fin[J, :][:, I]).sum()
-    return Fc
+    return Fc.tocsr() if issparse(F) else Fc
 
 
 # ======================================================================

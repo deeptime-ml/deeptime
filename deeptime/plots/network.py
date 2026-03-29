@@ -525,7 +525,7 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
             sddiag = np.diag(msm.stationary_distribution)
         flux = sddiag.dot(msm.transition_matrix)
         if msm.sparse:
-            P = P.multiply(P >= minflux)
+            P = P.multiply(P >= minflux).tocsr()
             P.eliminate_zeros()
         else:
             P[flux < minflux] = 0.0

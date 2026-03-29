@@ -357,7 +357,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
     def uncertainties(self):
         r""" Uncertainties based on measurement weights. """
         if self.experimental_measurement_weights is not None:
-            return np.sqrt(1. / 2. / self.w)
+            return np.sqrt(1. / 2. / self._w)
         else:
             return None
 
@@ -604,7 +604,7 @@ class AugmentedMSMEstimator(_MSMBaseEstimator):
             if i == self.maxiter:
                 ll_diff = np.abs(state.log_likelihoods[-2] - state.log_likelihoods[-1])
                 self._log.info(f"Failed to converge within {i} iterations. Log-likelihoods lastly changed by {ll_diff}."
-                               f" Consider increasing max_iter(now={self.max_iter})")
+                               f" Consider increasing maxiter(now={self.maxiter})")
             i += 1
 
         transition_matrix = msmest.transition_matrix(count_matrix, reversible=True, mu=state.pi_hat)

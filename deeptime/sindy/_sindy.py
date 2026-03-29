@@ -439,13 +439,16 @@ class STLSQ(LinearRegression):
         # Do some preprocessing before fitting
         x_, y = check_X_y(x_, y, accept_sparse=[], y_numeric=True, multi_output=True)
 
-        from sklearn.linear_model._base import _preprocess_data
-        x, y, X_offset, y_offset, X_scale = _preprocess_data(
-            x_,
-            y,
-            fit_intercept=self.fit_intercept,
-            copy=self.copy_X,
-        )
+        x = x_.copy() if self.copy_X else x_
+        if self.fit_intercept:
+            X_offset = np.average(x, axis=0)
+            x = x - X_offset
+            y_offset = np.average(y, axis=0)
+            y = y - y_offset
+        else:
+            X_offset = np.zeros(x.shape[1], dtype=x.dtype)
+            y_offset = np.zeros(y.shape[1], dtype=y.dtype) if y.ndim > 1 else np.float64(0.)
+        X_scale = np.ones(x.shape[1], dtype=x.dtype)
 
         self.iters = 0
         self.ind_ = np.ones((y.shape[1], x.shape[1]), dtype=bool)
