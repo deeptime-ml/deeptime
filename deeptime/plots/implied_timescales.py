@@ -76,7 +76,10 @@ def plot_implied_timescales(data: ImpliedTimescales, n_its: Optional[int] = None
         if data.has_samples and show_samples:
             its_samples = data.samples_for_process(it_index)
             if show_sample_mean:
-                sample_mean = np.nanmean(its_samples, axis=1)
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', message='Mean of empty slice', category=RuntimeWarning)
+                    sample_mean = np.nanmean(its_samples, axis=1)
                 ax.plot(data.lagtimes, sample_mean, marker='o', linestyle='dashed', color=color)
             if show_sample_confidence:
                 l_conf, r_conf = confidence_interval(its_samples.T, conf=sample_confidence, remove_nans=True)

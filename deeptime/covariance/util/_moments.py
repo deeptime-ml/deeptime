@@ -205,7 +205,7 @@ def _copy_convert(X, const=None, remove_mean=False, copy=True):
         dtype = np.float32  # convert to float32 if we can represent all numbers
     # copy/convert if needed
     if X.dtype not in (np.float64, dtype):  # leave as float64 (conversion is expensive), otherwise convert to dtype
-        X = X.astype(dtype, order='C')
+        X = X.real.astype(dtype, order='C') if np.issubdtype(X.dtype, np.complexfloating) else X.astype(dtype, order='C')
         if const is not None:
             const = const.astype(dtype, order='C')
     elif copy:
