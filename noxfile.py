@@ -68,7 +68,9 @@ def tests(session: nox.Session) -> None:
         if platform != 'darwin':
             test_dirs += ['deeptime']  # doctests via installed package
 
-        with session.cd("tests"):
+        # Run from a temp dir to avoid importing the source tree instead of the installed package
+        tmpdir = session.create_tmp()
+        with session.cd(tmpdir):
             session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args,
                         '--pyargs', *test_dirs)
 
