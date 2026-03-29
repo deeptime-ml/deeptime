@@ -832,6 +832,7 @@ def moments_XXXY(X, Y, remove_mean=False, symmetrize=False, weights=None,
 
 
 def moments_block(X, Y, remove_mean=False, modify_data=False,
+                  weights=None,
                   sparse_mode='auto', sparse_tol=0.0,
                   column_selection=None, diag_only=False):
     r""" Computes the first two unnormalized moments of X and Y forward and backward.
@@ -863,6 +864,9 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
         If remove_mean=True, the mean will be removed in the data matrix X,
         without creating an independent copy. This option is faster but might
         lead to surprises because your input array is changed.
+    weights : None or ndarray(T, )
+        weights assigned to each trajectory point. If None, all data points have weight one.
+        If ndarray, each data point is assigned a separate weight.
     sparse_mode : str
         one of:
             * 'dense' : always use dense mode
@@ -890,6 +894,9 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
         list of two lists with two elements.
         C[0,0] = Cxx, C[0,1] = Cxy, C[1,0] = Cyx, C[1,1] = Cyy
     """
+    # Check consistency of inputs:
+    if weights is not None:
+        assert X.shape[0] == weights.shape[0], 'X and weights must have equal length'
     # diag_only is only implemented for dense mode
     if diag_only and sparse_mode != 'dense':
         if sparse_mode == 'sparse':
@@ -906,7 +913,7 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
     Y0, yconst = _copy_convert(Y0, const=yconst, copy=copy)
     # sum / center
     w, sx, sx_centered, sy, sy_centered = _sum(X0, xmask=mask_X, xconst=xconst, Y=Y0, ymask=mask_Y, yconst=yconst,
-                                               symmetric=False, remove_mean=remove_mean)
+                                               symmetric=False, remove_mean=remove_mean, weights=weights)
     if remove_mean:
         _center(X0, w, sx, mask=mask_X, const=xconst, inplace=True)  # fast in-place centering
         _center(Y0, w, sy, mask=mask_Y, const=yconst, inplace=True)  # fast in-place centering
@@ -930,39 +937,47 @@ def moments_block(X, Y, remove_mean=False, modify_data=False,
                                          copy=True)
 
             Cxx = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_Xk,
-                      xsum=sx_centered, xconst=xconst, ysum=xksum, yconst=xkconst)
+                      xsum=sx_centered, xconst=xconst, ysum=xksum, yconst=xkconst,
+                      weights=weights)
             Cxy = _M2(X0, Y0k, mask_X=mask_X, mask_Y=mask_Yk,
-                      xsum=sx_centered, xconst=xconst, ysum=yksum, yconst=ykconst)
+                      xsum=sx_centered, xconst=xconst, ysum=yksum, yconst=ykconst,
+                      weights=weights)
             Cyx = _M2(Y0, X0k, mask_X=mask_Y, mask_Y=mask_Xk,
-                      xsum=sy_centered, xconst=yconst, ysum=xksum, yconst=xkconst)
+                      xsum=sy_centered, xconst=yconst, ysum=xksum, yconst=xkconst,
+                      weights=weights)
             Cyy = _M2(Y0, Y0k, mask_X=mask_Y, mask_Y=mask_Yk,
-                      xsum=sy_centered, xconst=yconst, ysum=yksum, yconst=ykconst)
+                      xsum=sy_centered, xconst=yconst, ysum=yksum, yconst=ykconst,
+                      weights=weights)
         else:
             X0k = X0[:, column_selection]
             Y0k = Y0[:, column_selection]
             Cxx = _M2(X0, X0k, mask_X=mask_X, mask_Y=mask_X,
                       xsum=sx_centered, xconst=xconst,
-                      ysum=sx_centered[column_selection], yconst=xconst)
+                      ysum=sx_centered[column_selection], yconst=xconst,
+                      weights=weights)
             Cxy = _M2(X0, Y0k, mask_X=mask_X, mask_Y=mask_Y,
                       xsum=sx_centered, xconst=xconst,
-                      ysum=sy_centered[column_selection], yconst=yconst)
+                      ysum=sy_centered[column_selection], yconst=yconst,
+                      weights=weights)
             Cyx = _M2(Y0, X0k, mask_X=mask_Y, mask_Y=mask_X,
                       xsum=sy_centered, xconst=yconst,
-                      ysum=sx_centered[column_selection], yconst=xconst)
+                      ysum=sx_centered[column_selection], yconst=xconst,
+                      weights=weights)
             Cyy = _M2(Y0, Y0k, mask_X=mask_Y, mask_Y=mask_Y,
                       xsum=sy_centered, xconst=yconst,
-                      ysum=sy_centered[column_selection], yconst=yconst)
+                      ysum=sy_centered[column_selection], yconst=yconst,
+                      weights=weights)
     else:
         Cxx = _M2(X0, X0, mask_X=mask_X, mask_Y=mask_X,
                   xsum=sx_centered, xconst=xconst, ysum=sx_centered, yconst=xconst,
-                  diag_only=diag_only)
+                  weights=weights, diag_only=diag_only)
         Cxy = _M2(X0, Y0, mask_X=mask_X, mask_Y=mask_Y,
                   xsum=sx_centered, xconst=xconst, ysum=sy_centered, yconst=yconst,
-                  diag_only=diag_only)
+                  weights=weights, diag_only=diag_only)
         Cyx = Cxy.T
         Cyy = _M2(Y0, Y0, mask_X=mask_Y, mask_Y=mask_Y,
                   xsum=sy_centered, xconst=yconst, ysum=sy_centered, yconst=yconst,
-                  diag_only=diag_only)
+                  weights=weights, diag_only=diag_only)
 
     return w, (sx, sy), ((Cxx, Cxy), (Cyx, Cyy))
 

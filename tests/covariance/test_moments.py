@@ -501,3 +501,104 @@ class TestMoments(unittest.TestCase):
                                  sparse_mode='sparse', sparse_tol=self.sparse_tol)
         self._test_moments_block(self.X_100_sparseconst, self.Y_100_sparseconst, self.cols_100, remove_mean=True,
                                  sparse_mode='sparse', sparse_tol=self.sparse_tol)
+
+    def _test_moments_block_weighted(self, X, Y, column_selection, remove_mean=False, sparse_mode='auto',
+                                     sparse_tol=0.0, weights=None):
+        w1, s, C = moments_block(X, Y, remove_mean=remove_mean, modify_data=False,
+                                 weights=weights, sparse_mode=sparse_mode, sparse_tol=sparse_tol)
+        # reference
+        T = X.shape[0]
+        if weights is not None:
+            X1 = weights[:, None] * X
+            Y1 = weights[:, None] * Y
+        else:
+            X1 = X
+            Y1 = Y
+        s_X_ref = X1.sum(axis=0)
+        s_Y_ref = Y1.sum(axis=0)
+        if weights is not None:
+            w = np.sum(weights)
+        else:
+            w = T
+        if remove_mean:
+            X = X - s_X_ref / float(w)
+            Y = Y - s_Y_ref / float(w)
+        if weights is not None:
+            X1 = weights[:, None] * X
+            Y1 = weights[:, None] * Y
+        else:
+            X1 = X
+            Y1 = Y
+        C_XX_ref = np.dot(X1.T, X)
+        C_XY_ref = np.dot(X1.T, Y)
+        C_YX_ref = np.dot(Y1.T, X)
+        C_YY_ref = np.dot(Y1.T, Y)
+        # test
+        assert np.allclose(w1, w)
+        assert np.allclose(s[0], s_X_ref)
+        assert np.allclose(s[1], s_Y_ref)
+        assert np.allclose(C[0][0], C_XX_ref)
+        assert np.allclose(C[0][1], C_XY_ref)
+        assert np.allclose(C[1][0], C_YX_ref)
+        assert np.allclose(C[1][1], C_YY_ref)
+        # column subsets
+        w1, s, C = moments_block(X, Y, remove_mean=remove_mean, modify_data=False,
+                                 weights=weights, sparse_mode=sparse_mode, sparse_tol=sparse_tol,
+                                 column_selection=column_selection)
+        assert np.allclose(C[0][0], C_XX_ref[:, column_selection])
+        assert np.allclose(C[0][1], C_XY_ref[:, column_selection])
+        assert np.allclose(C[1][0], C_YX_ref[:, column_selection])
+        assert np.allclose(C[1][1], C_YY_ref[:, column_selection])
+        # diagonal only
+        if sparse_mode != 'sparse' and X.shape[1] == Y.shape[1]:
+            w1, s, C = moments_block(X, Y, remove_mean=remove_mean, modify_data=False,
+                                     weights=weights, sparse_mode=sparse_mode, sparse_tol=sparse_tol,
+                                     diag_only=True)
+            assert np.allclose(C[0][0], np.diag(C_XX_ref))
+            assert np.allclose(C[0][1], np.diag(C_XY_ref))
+            assert np.allclose(C[1][0], np.diag(C_YX_ref))
+            assert np.allclose(C[1][1], np.diag(C_YY_ref))
+
+    def test_moments_block_weighted(self):
+        # weighted test, dense
+        self._test_moments_block_weighted(self.X_10, self.Y_10, self.cols_10, remove_mean=False,
+                                          sparse_mode='dense', weights=self.weights)
+        self._test_moments_block_weighted(self.X_100, self.Y_100, self.cols_100, remove_mean=False,
+                                          sparse_mode='dense', weights=self.weights)
+        # weighted test, mean-free, dense
+        self._test_moments_block_weighted(self.X_10, self.Y_10, self.cols_10, remove_mean=True,
+                                          sparse_mode='dense', weights=self.weights)
+        self._test_moments_block_weighted(self.X_100, self.Y_100, self.cols_100, remove_mean=True,
+                                          sparse_mode='dense', weights=self.weights)
+
+    def test_moments_block_weighted_sparsezero(self):
+        # weighted test, sparse zero
+        self._test_moments_block_weighted(self.X_10_sparsezero, self.Y_10_sparsezero, self.cols_10,
+                                          remove_mean=False, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+        self._test_moments_block_weighted(self.X_100_sparsezero, self.Y_100_sparsezero, self.cols_100,
+                                          remove_mean=False, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+        # mean-free
+        self._test_moments_block_weighted(self.X_10_sparsezero, self.Y_10_sparsezero, self.cols_10,
+                                          remove_mean=True, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+        self._test_moments_block_weighted(self.X_100_sparsezero, self.Y_100_sparsezero, self.cols_100,
+                                          remove_mean=True, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+
+    def test_moments_block_weighted_sparseconst(self):
+        # weighted test, sparse const
+        self._test_moments_block_weighted(self.X_10_sparseconst, self.Y_10_sparseconst, self.cols_10,
+                                          remove_mean=False, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+        self._test_moments_block_weighted(self.X_100_sparseconst, self.Y_100_sparseconst, self.cols_100,
+                                          remove_mean=False, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+        # mean-free
+        self._test_moments_block_weighted(self.X_10_sparseconst, self.Y_10_sparseconst, self.cols_10,
+                                          remove_mean=True, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)
+        self._test_moments_block_weighted(self.X_100_sparseconst, self.Y_100_sparseconst, self.cols_100,
+                                          remove_mean=True, sparse_mode='sparse', sparse_tol=self.sparse_tol,
+                                          weights=self.weights)

@@ -242,9 +242,6 @@ class RunningCovar:
         if column_selection is not None and self.diag_only:
             raise ValueError('Computing only parts of the diagonal is not supported.')
 
-        # Weights cannot be used for compute_YY:
-        if weights is not None and self.compute_YY:
-            raise ValueError('Use of weights is not implemented for compute_YY==True')
         if weights is not None:
             # Convert to array of length T if weights is a single number:
             if isinstance(weights, numbers.Real):
@@ -284,6 +281,7 @@ class RunningCovar:
             assert Y is not None
             assert not self.symmetrize
             w, s, C = moments_block(X, Y, remove_mean=self.remove_mean,
+                                    weights=weights,
                                     sparse_mode=self.sparse_mode, modify_data=self.modify_data,
                                     column_selection=column_selection, diag_only=self.diag_only)
             # make copy in order to get independently mergeable moments

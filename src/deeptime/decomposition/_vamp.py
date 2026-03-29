@@ -220,7 +220,7 @@ class VAMP(EstimatorTransformer):
             covariances = covariances.fetch_model()
         return covariances
 
-    def partial_fit(self, data):
+    def partial_fit(self, data, weights=None):
         r""" Updates the covariance estimates through a new batch of data.
 
         Parameters
@@ -228,6 +228,12 @@ class VAMP(EstimatorTransformer):
         data : tuple(ndarray, ndarray)
             A tuple of ndarrays which have to have same shape and are :math:`X_t` and :math:`X_{t+\tau}`, respectively.
             Here, :math:`\tau` denotes the lagtime.
+        weights : None or float or ndarray(T,) or object, optional, default=None
+            Weights assigned to each data point. If None, all data points have equal weight. If float, the same
+            weight is given to all data points. If ndarray, each data point is assigned a separate weight and must
+            have the same length as the data. Can also be an object with a ``weights(X)`` method that accepts a
+            trajectory and returns a weight vector
+            (e.g., :class:`KoopmanWeightingModel <deeptime.covariance.KoopmanWeightingModel>`).
 
         Returns
         -------
@@ -238,7 +244,7 @@ class VAMP(EstimatorTransformer):
             self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
         x, y = to_dataset(data, lagtime=self.lagtime)[:]
         self._covariance_estimator.partial_fit((self.observable_transform(x),
-                                                self.observable_transform(y)))
+                                                self.observable_transform(y)), weights=weights)
         return self
 
     def fit_from_covariances(self, covariances: Union[Covariance, CovarianceModel]):
@@ -268,8 +274,12 @@ class VAMP(EstimatorTransformer):
         ----------
         data
             Input data, see :meth:`to_dataset <deeptime.util.types.to_dataset>` for options.
-        weights
-            See the :class:`Covariance <deeptime.covariance.Covariance>` estimator.
+        weights : None or float or ndarray(T,) or object, optional, default=None
+            Weights assigned to each trajectory point of the time-lagged data pairs. If None, all data points
+            have equal weight. If float, the same weight is given to all data points. If ndarray, each data point
+            is assigned a separate weight. The length must match the number of time-lagged pairs, i.e.,
+            ``len(data) - lagtime``. Can also be an object with a ``weights(X)`` method that accepts a trajectory
+            and returns a weight vector (e.g., :class:`KoopmanWeightingModel <deeptime.covariance.KoopmanWeightingModel>`).
 
         Returns
         -------
