@@ -391,7 +391,7 @@ class _ImmutableInputData:
                 # set ndarray writabe flags to false
                 try:
                     d.setflags(write=False)
-                except:
+                except (ValueError, TypeError):
                     # although this should not raise, occasionally it does raise
                     # due to arrays stemming from torch which then cannot be set immutable
                     ...
@@ -403,7 +403,7 @@ class _ImmutableInputData:
             if isinstance(d, np.ndarray):
                 try:
                     d.setflags(write=writable)
-                except:
+                except (ValueError, TypeError):
                     # although this should not raise, occasionally it does raise
                     # due to arrays stemming from torch which then cannot be set immutable
                     ...

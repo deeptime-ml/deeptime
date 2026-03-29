@@ -134,6 +134,6 @@ def bootstrap_counts(dtrajs, lagtime, corrlength=None):
             cols[ncur:ncur + n_from_traj[i]] = c
             ncur += n_from_traj[i]
     # sum over counts
-    Csparse = scipy.sparse.coo_matrix((ones, (rows, cols)), shape=(n, n))
+    Csparse = scipy.sparse.coo_array((ones, (rows, cols)), shape=(n, n))
 
     return Csparse.tocsr()

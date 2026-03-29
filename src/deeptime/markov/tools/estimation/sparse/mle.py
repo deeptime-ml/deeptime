@@ -19,7 +19,7 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
     if dtype not in (np.float32, np.float64, np.longdouble):
         dtype = np.float64
 
-    C_sum_py = C.sum(axis=1).A1
+    C_sum_py = np.asarray(C.sum(axis=1)).ravel()
     C_sum = C_sum_py.astype(dtype, order='C', copy=False)
 
     CCt = C + C.T
@@ -40,7 +40,7 @@ def mle_trev(C, maxerr=1.0E-12, maxiter=int(1.0E6),
                       NotConvergedWarning)
 
     # T matrix has the same shape and positions of nonzero elements as CCt
-    T = scipy.sparse.csr_matrix((T_data, (i_indices, j_indices)), shape=CCt.shape)
+    T = scipy.sparse.csr_array((T_data, (i_indices, j_indices)), shape=CCt.shape)
     from deeptime.markov.tools.estimation.sparse.transition_matrix import correct_transition_matrix
     T = correct_transition_matrix(T)
     if return_statdist:
@@ -75,10 +75,10 @@ def mle_trev_given_pi(C, mu, maxerr=1.0E-12, maxiter=1000000, warn_not_converged
                       NotConvergedWarning)
 
     # unnormalized T matrix has the same shape and positions of nonzero elements as the C matrix
-    T_unnormalized = scipy.sparse.csr_matrix((T_unnormalized_data, (i_indices.copy(), j_indices.copy())),
-                                             shape=CCt_coo.shape)
+    T_unnormalized = scipy.sparse.csr_array((T_unnormalized_data, (i_indices.copy(), j_indices.copy())),
+                                            shape=CCt_coo.shape)
     # finish T by setting the diagonal elements according to the normalization constraint
-    rowsum = T_unnormalized.sum(axis=1).A1
+    rowsum = np.asarray(T_unnormalized.sum(axis=1)).ravel()
     T_diagonal = scipy.sparse.diags(np.maximum(1.0 - rowsum, 0.0), 0)
 
     return T_unnormalized + T_diagonal
