@@ -312,8 +312,8 @@ def _transform_to_density_impl(domain_size, trajectory, n_grid_x=20, n_grid_y=10
     kde_input = np.dstack(grid).reshape(-1, 2)
     traj_kde = np.empty((len(trajectory), len(kde_input)))
 
-    import multiprocessing as mp
-    with joining(mp.Pool(processes=n_jobs)) as pool:
+    from deeptime.util.parallel import multiprocessing_context
+    with joining(multiprocessing_context().Pool(processes=n_jobs)) as pool:
         args = [(t, trajectory[t], kde_input) for t in range(len(trajectory))]
         for result in pool.imap_unordered(_transform_to_density_impl_worker, args):
             traj_kde[result[0]] = result[1]

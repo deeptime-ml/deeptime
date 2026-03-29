@@ -183,7 +183,6 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
     # compute inefficiencies
     I, J = C.nonzero()
     if n_jobs > 1:
-        from multiprocessing.pool import Pool
         import tempfile
 
         # to avoid pickling partial results, we store these in a numpy.memmap
@@ -198,8 +197,8 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
         else:
             _callback = callback
 
-        from deeptime.util.parallel import joining
-        with joining(Pool(n_jobs)) as pool:
+        from deeptime.util.parallel import joining, multiprocessing_context
+        with joining(multiprocessing_context().Pool(n_jobs)) as pool:
             result_async = [pool.apply_async(_wrapper, (args,), callback=_callback)
                             for args in gen]
 
