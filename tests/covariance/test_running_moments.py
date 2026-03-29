@@ -67,6 +67,8 @@ class TestRunningMoments(unittest.TestCase):
         cls.Y0_w = cls.Y - cls.my_w
         cls.Mxx0_w = np.dot((cls.weights[:, None] * cls.X0_w).T, cls.X0_w)
         cls.Mxy0_w = np.dot((cls.weights[:, None] * cls.X0_w).T, cls.Y0_w)
+        cls.Myy_w = np.dot((cls.weights[:, None] * cls.Y).T, cls.Y)
+        cls.Myy0_w = np.dot((cls.weights[:, None] * cls.Y0_w).T, cls.Y0_w)
 
         # direct calculation, weighted symmetric moments
         cls.s_sym_w = cls.sx_w + cls.sy_w
@@ -325,3 +327,69 @@ class TestRunningMoments(unittest.TestCase):
         np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0))
         np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0))
         np.testing.assert_allclose(cc.moments_YY(), np.diag(self.Myy0))
+
+    def test_XXYY_weighted_withmean(self):
+        # many passes
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=False)
+        for i in range(0, self.T, self.L):
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
+            cc.add(iX, iY, weights=iwe)
+        np.testing.assert_allclose(cc.weight_XY(), self.wesum)
+        np.testing.assert_allclose(cc.sum_X(), self.sx_w)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx_w)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy_w)
+        np.testing.assert_allclose(cc.moments_YY(), self.Myy_w)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=False)
+        for i in range(0, self.T, self.L):
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
+            cc.add(iX, iY, weights=iwe, column_selection=self.cols_2)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx_w[:, self.cols_2])
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy_w[:, self.cols_2])
+        np.testing.assert_allclose(cc.moments_YY(), self.Myy_w[:, self.cols_2])
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=False,
+                          diag_only=True)
+        for i in range(0, self.T, self.L):
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
+            cc.add(iX, iY, weights=iwe)
+        np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx_w))
+        np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy_w))
+        np.testing.assert_allclose(cc.moments_YY(), np.diag(self.Myy_w))
+
+    def test_XXYY_weighted_meanfree(self):
+        # many passes
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
+        for i in range(0, self.T, self.L):
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
+            cc.add(iX, iY, weights=iwe)
+        np.testing.assert_allclose(cc.weight_XY(), self.wesum)
+        np.testing.assert_allclose(cc.sum_X(), self.sx_w)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_w)
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_w)
+        np.testing.assert_allclose(cc.moments_YY(), self.Myy0_w)
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True)
+        for i in range(0, self.T, self.L):
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
+            cc.add(iX, iY, weights=iwe, column_selection=self.cols_2)
+        np.testing.assert_allclose(cc.moments_XX(), self.Mxx0_w[:, self.cols_2])
+        np.testing.assert_allclose(cc.moments_XY(), self.Mxy0_w[:, self.cols_2])
+        np.testing.assert_allclose(cc.moments_YY(), self.Myy0_w[:, self.cols_2])
+        cc = RunningCovar(compute_XX=True, compute_XY=True, compute_YY=True, remove_mean=True,
+                          diag_only=True)
+        for i in range(0, self.T, self.L):
+            iX = self.X[i:i + self.L, :]
+            iY = self.Y[i:i + self.L, :]
+            iwe = self.weights[i:i + self.L]
+            cc.add(iX, iY, weights=iwe)
+        np.testing.assert_allclose(cc.moments_XX(), np.diag(self.Mxx0_w))
+        np.testing.assert_allclose(cc.moments_XY(), np.diag(self.Mxy0_w))
+        np.testing.assert_allclose(cc.moments_YY(), np.diag(self.Myy0_w))
