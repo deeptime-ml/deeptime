@@ -1,5 +1,8 @@
-from . import _version
-__version__ = _version.get_versions()['version']
+from importlib.metadata import version, PackageNotFoundError
+try:
+    __version__ = version("deeptime")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 from . import util
 from . import numeric

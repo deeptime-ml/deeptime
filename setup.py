@@ -9,8 +9,6 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib
 
-sys.path.insert(0, os.path.dirname(__file__))
-import versioneer
 try:
     from skbuild import setup
 except ImportError:
@@ -27,8 +25,8 @@ def load_long_description():
 
 
 cmake_args = [
-    f"-DDEEPTIME_VERSION={versioneer.get_version().split('+')[0]}",
-    f"-DDEEPTIME_VERSION_INFO={versioneer.get_version()}"
+    "-DDEEPTIME_VERSION=0.0.0",
+    "-DDEEPTIME_VERSION_INFO=0.0.0"
 ]
 
 excludes = ("tests", "tests.*", "examples", "examples.*", "docs", "docs.*", "devtools", "devtools.*")
@@ -39,13 +37,11 @@ metadata = \
         long_description_content_type='text/markdown',
         zip_safe=False,
         packages=find_namespace_packages(where=".", exclude=excludes),
-        package_dir={"deeptime": "deeptime", "versioneer": "."},
+        package_dir={"deeptime": "deeptime"},
         cmake_install_dir="deeptime/",
         cmake_args=cmake_args,
         include_package_data=True,
         ext_modules=[],
-        version=versioneer.get_version(),
-        cmdclass=versioneer.get_cmdclass()
     )
 
 if __name__ == '__main__':

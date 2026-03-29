@@ -75,22 +75,16 @@ requires = [
     "pybind11>=2.10.1",
     "numpy",
     "cmake>=3.24",
-    "tomli; python_version < '3.11'",
     "scipy>=1.9.3",
     "ninja; platform_system!='Windows'",
-    "versioneer[toml]==0.29"
+    "setuptools-scm>=8"
 ]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 filterwarnings = ["once", "ignore::UserWarning"]
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "deeptime/_version.py"
-versionfile_build = "deeptime/_version.py"
-tag_prefix = "v"
+[tool.setuptools_scm]
 
 [tool.flake8]
 ignore = ['E24', 'E121', 'E123', 'E126', 'E226', 'E704', 'W503', 'W504']
@@ -98,10 +92,10 @@ max-line-length = 120
 
 [tool.coverage.report]
 exclude_lines = ["@plotting_function", "pragma: no cover"]
-omit = ["*/**/setup.py", "tests/*", "deeptime/_version.py"]
+omit = ["*/**/setup.py", "tests/*"]
 
 [tool.coverage.run]
-omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx", "deeptime/_version.py"]
+omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx"]
 
 [tool.cibuildwheel]
 build-verbosity = 1
