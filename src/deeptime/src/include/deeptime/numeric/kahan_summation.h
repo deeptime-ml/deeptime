@@ -40,6 +40,27 @@ auto ksumArr(const np_array_nfc<dtype> &Xarr) -> dtype {
 /***************************************************************************************************
 *   dot product of two matrices using Kahan summation scheme
 ***************************************************************************************************/
+
+// Raw-pointer version: C = A @ B where A is (n x m), B is (m x l), C is (n x l).
+// All arrays must be row-major contiguous. Caller ensures shape compatibility and allocation.
+template<typename dtype>
+void kdot_raw(const dtype* A, const dtype* B, dtype* C,
+              std::ptrdiff_t n, std::ptrdiff_t m, std::ptrdiff_t l) {
+    for (std::ptrdiff_t i = 0; i < n; ++i) {
+        for (std::ptrdiff_t j = 0; j < l; ++j) {
+            dtype err{0};
+            dtype sum{0};
+            for (std::ptrdiff_t k = 0; k < m; ++k) {
+                auto y = A[i * m + k] * B[k * l + j] - err;
+                auto t = sum + y;
+                err = (t - sum) - y;
+                sum = t;
+            }
+            C[i * l + j] = sum;
+        }
+    }
+}
+
 template<typename dtype>
 auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> np_array<dtype> {
     auto n = arrA.shape(0);
@@ -50,27 +71,8 @@ auto kdot(const np_array_nfc<dtype> &arrA, const np_array_nfc<dtype> &arrB) -> n
         throw std::invalid_argument("Shape mismatch, A.shape[1] must match B.shape[0].");
     }
 
-    auto A = arrA.template unchecked<2>();
-    auto B = arrB.template unchecked<2>();
-
     auto Carr = np_array<dtype>({n, l});
-
-    auto C = Carr.template mutable_unchecked<2>();
-
-    for (py::ssize_t i = 0; i < n; ++i) {
-        for (py::ssize_t j = 0; j < l; ++j) {
-            dtype err{0};
-            dtype sum{0};
-            for (py::ssize_t k = 0; k < m; ++k) {
-                auto y = A(i, k) * B(k, j) - err;
-                auto t = sum + y;
-                err = (t - sum) - y;
-                sum = t;
-            }
-            C(i, j) = sum;
-        }
-    }
-
+    kdot_raw(arrA.data(), arrB.data(), Carr.mutable_data(), n, m, l);
     return Carr;
 }
 

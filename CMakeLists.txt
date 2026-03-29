@@ -29,7 +29,7 @@ if(MSVC)
 endif()
 
 if(DEEPTIME_BUILD_CPP_TESTS)
-    # C++ tests embed the Python interpreter and need the full Python library
+    # Tests link pybind11::embed for Python C API symbols used in pybind11 headers
     find_package(Python COMPONENTS Interpreter Development.Module Development.Embed NumPy REQUIRED)
 else()
     find_package(Python COMPONENTS Interpreter Development.Module NumPy REQUIRED)

@@ -42,3 +42,35 @@ Or using pip directly on the remote:
 ```
 pip install git+https://github.com/deeptime-ml/deeptime.git@main
 ```
+
+## Building as a standalone CMake project
+
+The C++ library and tests can be built directly with CMake. This requires Python (with
+development headers), NumPy, and pybind11 to be available.
+
+```bash
+cmake -B build \
+  -DDEEPTIME_BUILD_CPP_TESTS=ON \
+  -DPython_ROOT_DIR=/path/to/venv \
+  -DPython_FIND_VIRTUALENV=ONLY \
+  -Dpybind11_DIR=$(python -c "import pybind11; print(pybind11.get_cmake_dir())")
+
+cmake --build build --target tests
+./build/tests/tests
+```
+
+### CMake options
+
+| Variable | Default | Description |
+|---|---|---|
+| `DEEPTIME_BUILD_CPP_TESTS` | `OFF` | Build the C++ unit tests (Catch2) |
+| `DEEPTIME_VERSION` | `0.0.0` | Version string without commit offset |
+| `DEEPTIME_VERSION_INFO` | `0.0.0` | Full version string |
+
+### Required CMake variables for dependency discovery
+
+| Variable | Description |
+|---|---|
+| `pybind11_DIR` | Path to pybind11's CMake config (e.g. from `python -c "import pybind11; print(pybind11.get_cmake_dir())"`) |
+| `Python_ROOT_DIR` | Python installation or virtualenv prefix (helps CMake find the right interpreter) |
+| `Python_FIND_VIRTUALENV` | Set to `ONLY` when using a virtualenv to prevent CMake from picking up the system Python |

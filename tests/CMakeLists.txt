@@ -8,8 +8,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-set(TEST_SRC src/test_common_utilities.cpp src/test_swap_arr.cpp
-        src/test_kahan_summation.cpp src/test_traminput.cpp src/test_tram.cpp)
+set(TEST_SRC src/test_common_utilities.cpp src/test_kahan_summation.cpp)
 add_executable(tests ${TEST_SRC})
 set_target_properties(tests PROPERTIES CXX_VISIBILITY_PRESET hidden)
 

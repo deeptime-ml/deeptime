@@ -2,7 +2,6 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include <pybind11/embed.h>
 #include "deeptime/numeric/kahan_summation.h"
 
 using namespace deeptime;
@@ -113,73 +112,32 @@ TEST_CASE("logsumexp_sort_kahan_inplace", "[kahan_summation]") {
 }
 
 
-// kdot tests disabled: pybind11 scoped_interpreter segfaults on CI
-// TODO: re-enable once embedded interpreter stability is resolved
-/*
-TEST_CASE("kdot") {
-    py::scoped_interpreter guard;
-    SECTION("shape mismatch") {
-        auto a = np_array_nfc<double>({3, 2});
-        auto b = np_array_nfc<double>({2, 3});
-        try {
-            deeptime::numeric::kahan::kdot(a, b);
-        }
-        catch (std::invalid_argument const &err) {
-            REQUIRE(err.what() == std::string("Shape mismatch, A.shape[1] must match B.shape[0]."));
-        }
-        catch (...) {
-            FAIL("Unexpected exception was thrown.");
-        }
-    }
-    SECTION("check correct output shape") {
-       auto a = np_array_nfc<double>({1, 2});
-       auto b = np_array_nfc<double>({2, 3});
-
-       auto res = deeptime::numeric::kahan::kdot(a, b);
-       REQUIRE(res.shape(0) == a.shape(0));
-       REQUIRE(res.shape(1) == b.shape(1));
-   }
-
+TEST_CASE("kdot", "[kahan_summation]") {
     SECTION("check correct output vectors") {
-        auto a = np_array_nfc<double>({1,2});
-        auto b = np_array_nfc<double>({2,1});
+        // a(1x2) @ b(2x1) -> c(1x1)
+        double a[2] = {std::sqrt(2.) / 2, -std::sqrt(2.) / 2};
+        double b[2];
+        double c[1];
 
-        a.mutable_at(0, 0) = std::sqrt(2.)/2;
-        a.mutable_at(0, 1) = -std::sqrt(2.)/2;
-        
-        // some values on the unit circle with their respective cosine.
-        auto x = GENERATE(0, 1, -std::sqrt(2.)/2, std::sqrt(2.)/2, -1);
-        auto y = GENERATE(0, 1, -std::sqrt(2.)/2, std::sqrt(2.)/2, -1);
-	
-        b.mutable_at(0,0) = x;
-        b.mutable_at(1,0) = y;
-	auto correct = a.at(0,0) * b.at(0,0) + a.at(0, 1) * b.at(1,0);
-        auto res = deeptime::numeric::kahan::kdot(a, b);
-        REQUIRE_THAT(res.at(0, 0), Catch::Matchers::WithinRel(correct, 0.001));
+        auto x = GENERATE(0., 1., -std::sqrt(2.) / 2, std::sqrt(2.) / 2, -1.);
+        auto y = GENERATE(0., 1., -std::sqrt(2.) / 2, std::sqrt(2.) / 2, -1.);
+
+        b[0] = x;
+        b[1] = y;
+        auto correct = a[0] * b[0] + a[1] * b[1];
+        deeptime::numeric::kahan::kdot_raw(a, b, c, 1, 2, 1);
+        REQUIRE_THAT(c[0], Catch::Matchers::WithinRel(correct, 0.001));
     }
 
     SECTION("check correct output matrix") {
-        auto a = np_array_nfc<double>(std::vector<int>{2, 4});
-        auto b = np_array_nfc<double>(std::vector<int>{4, 1});
+        // a(2x4) @ b(4x1) -> c(2x1)
+        double a[8] = {-9364837, 6354931, 2933099, 2962495,
+                        1917769, -1596682, 3273189, -1714555};
+        double b[4] = {0., 1., 100., 1000000.};
+        double c[2] = {0, 0};
 
-        // fill with some random numbers (use number generator??)
-        auto aBuf = a.mutable_unchecked();
-        aBuf(0, 0) = -9364837;
-        aBuf(0, 1) = 6354931;
-        aBuf(0, 2) = 2933099;
-        aBuf(0, 3) = 2962495;
-        aBuf(1, 0) = 1917769;
-        aBuf(1, 1) = -1596682;
-        aBuf(1, 2) = 3273189;
-        aBuf(1, 3) = -1714555;
-        b.mutable_at(0, 0) = 0.;
-        b.mutable_at(1, 0) = 1;
-        b.mutable_at(2, 0) = 100;
-        b.mutable_at(3, 0) = 1000000.;
-
-        auto res = deeptime::numeric::kahan::kdot(a, b);
-        REQUIRE(res.at(0, 0) == 1000000 * aBuf(0, 3) + 100 * aBuf(0, 2) + aBuf(0, 1));
-        REQUIRE(res.at(1, 0) == aBuf(1, 1) + 100 * aBuf(1, 2) + 1000000 * aBuf(1, 3));
+        deeptime::numeric::kahan::kdot_raw(a, b, c, 2, 4, 1);
+        REQUIRE(c[0] == 1000000 * 2962495. + 100 * 2933099. + 6354931.);
+        REQUIRE(c[1] == -1596682. + 100 * 3273189. + 1000000 * (-1714555.));
     }
 }
-*/
