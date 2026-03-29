@@ -28,7 +28,12 @@ if(MSVC)
     add_compile_options(/W3 /EHsc /bigobj /permissive- /std:c++17)
 endif()
 
-find_package(Python COMPONENTS Interpreter Development.Module NumPy REQUIRED)
+if(DEEPTIME_BUILD_CPP_TESTS)
+    # C++ tests embed the Python interpreter and need the full Python library
+    find_package(Python COMPONENTS Interpreter Development.Module Development.Embed NumPy REQUIRED)
+else()
+    find_package(Python COMPONENTS Interpreter Development.Module NumPy REQUIRED)
+endif()
 find_package(pybind11 CONFIG REQUIRED)
 
 function(register_pybind_module name)
