@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
-#include <pybind11/embed.h>
 #include <deeptime/common.h>
 
 TEST_CASE("Normalize yields discrete probability distributions", "[common]") {
@@ -18,27 +17,3 @@ TEST_CASE("Index object", "[common]") {
     REQUIRE(ix(0, 0, 0, 0, 1) == 1);
     REQUIRE(ix(0, 0, 0, 1, 0) == 3);
 }
-
-// Disabled: pybind11 scoped_interpreter segfaults on CI
-// TODO: re-enable once embedded interpreter stability is resolved
-/*
-TEST_CASE("Swap np array", "[common]") {
-    pybind11::scoped_interpreter guard{};
-    deeptime::np_array<int> arr1 {{3, 3}};
-    deeptime::np_array<int> arr2 {{3, 3}};
-    arr1.mutable_at(2, 1) = 10;
-    arr2.mutable_at(2, 1) = 5;
-    REQUIRE(arr1.at(2, 1) == 10);
-    REQUIRE(arr2.at(2, 1) == 5);
-
-    auto ix = deeptime::Index<2>::make_index(arr1.shape(), arr1.shape() + arr1.ndim());
-    auto* p1 = arr1.data();
-    auto* p2 = arr2.data();
-    REQUIRE(p1[ix(2, 1)] == 10);
-    REQUIRE(p2[ix(2, 1)] == 5);
-
-    std::swap(p1, p2);
-    REQUIRE(p1[ix(2, 1)] == 5);
-    REQUIRE(p2[ix(2, 1)] == 10);
-}
-*/
