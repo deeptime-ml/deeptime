@@ -79,7 +79,7 @@ build-backend = "scikit_build_core.build"
 [tool.scikit-build]
 build-dir = "build/{wheel_tag}"
 cmake.build-type = "Release"
-wheel.packages = ["deeptime"]
+wheel.packages = ["src/deeptime"]
 editable.mode = "redirect"
 editable.rebuild = true
 metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
@@ -98,10 +98,10 @@ max-line-length = 120
 
 [tool.coverage.report]
 exclude_lines = ["@plotting_function", "pragma: no cover"]
-omit = ["*/**/setup.py", "tests/*"]
+omit = ["tests/*"]
 
 [tool.coverage.run]
-omit = ["*/**/setup.py", "tests/*", "*/**/*.pyx"]
+omit = ["tests/*", "*/**/*.pyx"]
 
 [tool.cibuildwheel]
 build-verbosity = 1
