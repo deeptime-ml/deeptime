@@ -71,7 +71,6 @@ requires = [
     "scikit-build-core>=0.10",
     "pybind11>=2.10.1",
     "numpy",
-    "scipy>=1.9.3",
     "setuptools-scm>=8",
 ]
 build-backend = "scikit_build_core.build"
