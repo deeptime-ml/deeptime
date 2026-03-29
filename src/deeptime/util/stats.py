@@ -189,7 +189,7 @@ def evaluate_samples(samples: Iterable[Any], quantity: str, delimiter: str = '/'
         samples = [call_member(s, quantity, *args, **kwargs) for s in samples]
     try:
         samples = np.asarray(samples, dtype=float)
-    except:
+    except (ValueError, TypeError):
         pass
     return samples
 
