@@ -85,7 +85,7 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
         data = factors
     else:
         raise NotImplementedError('An input format other than a tuple (g,M) for the reweighting factors is not implemented.')
-    C = scipy.sparse.coo_matrix((data, (row, col)), shape=(nstates, nstates))
+    C = scipy.sparse.coo_array((data, (row, col)), shape=(nstates, nstates))
     # export to output format
     if sparse:
         return C.tocsr()

@@ -573,8 +573,8 @@ class TransitionCountEstimator(EstimatorTransformer):
             if issparse(count_matrix):
                 indptr = np.pad(count_matrix.indptr, pad_width=[(0, n_pad)], 
                                 constant_values=count_matrix.indptr[-1])
-                count_matrix = scipy.sparse.csr_matrix((count_matrix.data, count_matrix.indices, indptr),
-                                                       shape=(self.n_states, self.n_states))
+                count_matrix = scipy.sparse.csr_array((count_matrix.data, count_matrix.indices, indptr),
+                                                      shape=(self.n_states, self.n_states))
             else:
                 count_matrix = np.pad(count_matrix, pad_width=[(0, n_pad), (0, n_pad)])
 

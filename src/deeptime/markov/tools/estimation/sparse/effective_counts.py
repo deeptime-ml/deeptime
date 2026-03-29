@@ -214,7 +214,7 @@ def statistical_inefficiencies(dtrajs, lag, C=None, truncate_acf=True, mact=2.0,
                                                    truncate_acf=truncate_acf, mact=mact)
             if callback is not None:
                 callback(1)
-    res = scipy.sparse.csr_matrix((data, (I, J)), shape=C.shape)
+    res = scipy.sparse.csr_array((data, (I, J)), shape=C.shape)
     return res
 
 
@@ -292,13 +292,13 @@ def effective_count_matrix(dtrajs, lag, average='row', truncate_acf=True, mact=1
     # averaging
     if average.lower() == 'row':
         # reduction factor by row
-        factor = np.array(Ceff.sum(axis=1) / np.maximum(1.0, C.sum(axis=1)))
+        factor = np.asarray(Ceff.sum(axis=1) / np.maximum(1.0, C.sum(axis=1))).reshape(-1, 1)
         # row-based effective counts
-        Ceff = scipy.sparse.csr_matrix(C.multiply(factor))
+        Ceff = scipy.sparse.csr_array(C.multiply(factor))
     elif average.lower() == 'all':
         # reduction factor by all
         factor = Ceff.sum() / C.sum()
-        Ceff = scipy.sparse.csr_matrix(C.multiply(factor))
+        Ceff = scipy.sparse.csr_array(C.multiply(factor))
     # else: by element, we're done.
 
     return Ceff

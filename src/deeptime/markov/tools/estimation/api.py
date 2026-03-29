@@ -10,8 +10,8 @@ __docformat__ = "restructuredtext en"
 import warnings
 
 import numpy as np
-from scipy.sparse import coo_matrix
-from scipy.sparse import csr_matrix
+from scipy.sparse import coo_array
+from scipy.sparse import csr_array
 from scipy.sparse import issparse
 
 from deeptime.util.types import ensure_dtraj_list, ensure_reweighting_factors_tuple
@@ -456,7 +456,7 @@ def connected_sets(C, directed=True):
     [array([0, 1, 2])]
 
     """
-    return sparse.connectivity.connected_sets(C if issparse(C) else csr_matrix(C), directed=directed)
+    return sparse.connectivity.connected_sets(C if issparse(C) else csr_array(C), directed=directed)
 
 
 def largest_connected_set(C, directed=True):
@@ -507,7 +507,7 @@ def largest_connected_set(C, directed=True):
     array([0, 1, 2])
 
     """
-    return sparse.connectivity.largest_connected_set(C if issparse(C) else csr_matrix(C), directed=directed)
+    return sparse.connectivity.largest_connected_set(C if issparse(C) else csr_array(C), directed=directed)
 
 
 def largest_connected_submatrix(C, directed=True, lcc=None):
@@ -564,7 +564,7 @@ def largest_connected_submatrix(C, directed=True, lcc=None):
            [ 0,  0,  4]]...)
 
     """
-    lcc = sparse.connectivity.largest_connected_submatrix(C if issparse(C) else csr_matrix(C),
+    lcc = sparse.connectivity.largest_connected_submatrix(C if issparse(C) else csr_array(C),
                                                           directed=directed, lcc=lcc)
     return lcc if issparse(C) else lcc.toarray()
 
@@ -613,7 +613,7 @@ def is_connected(C, directed=True):
     True
 
     """
-    return sparse.connectivity.is_connected(C if issparse(C) else csr_matrix(C), directed=directed)
+    return sparse.connectivity.is_connected(C if issparse(C) else csr_array(C), directed=directed)
 
 
 ################################################################################
@@ -660,7 +660,7 @@ def prior_neighbor(C, alpha=0.001):
     """
 
     if not issparse(C):
-        B = sparse.prior.prior_neighbor(csr_matrix(C), alpha=alpha)
+        B = sparse.prior.prior_neighbor(csr_array(C), alpha=alpha)
         return B.toarray()
     else:
         return sparse.prior.prior_neighbor(C, alpha=alpha)
@@ -879,7 +879,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     elif method == 'auto':
         # heuristically determine whether is't more efficient to do a dense of sparse computation
         if sparse_input_type:
-            dof = C.getnnz()
+            dof = C.nnz
         else:
             dof = np.count_nonzero(C)
         dimension = C.shape[0]
@@ -893,7 +893,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
 
     # convert input type
     if sparse_computation and not sparse_input_type:
-        C = coo_matrix(C)
+        C = coo_array(C)
     if not sparse_computation and sparse_input_type:
         C = C.toarray()
 
@@ -947,7 +947,7 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     if sparse_computation and not sparse_input_type:
         T = T.toarray()
     elif not sparse_computation and sparse_input_type:
-        T = csr_matrix(T)
+        T = csr_array(T)
 
     if return_statdist:
         return T, mu

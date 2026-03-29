@@ -105,7 +105,7 @@ class TestMSMBasicProperties(object):
         P = msm.transition_matrix
         # should be ndarray by default
         # assert (isinstance(P, np.ndarray))
-        assert_(isinstance(P, np.ndarray) or isinstance(P, scipy.sparse.csr_matrix))
+        assert_(isinstance(P, np.ndarray) or scipy.sparse.issparse(P))
         # shape
         assert_equal(P.shape, (msm.n_states, msm.n_states))
         # test transition matrix properties

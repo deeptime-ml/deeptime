@@ -57,7 +57,7 @@ def bootstrapping_dtrajs(dtrajs, lag, N_full, nbs=10000, active_set=None):
     traj_inds = np.concatenate(traj_ind)
     pairs = N_full * np.concatenate(state1) + np.concatenate(state2)
     data = np.ones(pairs.size)
-    Ct_traj = scipy.sparse.coo_matrix((data, (traj_inds, pairs)), shape=(Q, N_full * N_full))
+    Ct_traj = scipy.sparse.coo_array((data, (traj_inds, pairs)), shape=(Q, N_full * N_full))
     Ct_traj = Ct_traj.tocsr()
 
     # Perform re-sampling:
@@ -156,7 +156,7 @@ def twostep_count_matrix(dtrajs, lag, N):
     # Transform the rows and cols into a single list with N*+2 possible values:
     pair = N * row + col
     # Estimate sparse matrix:
-    C2t = scipy.sparse.coo_matrix((data, (pair, state)), shape=(N * N, N))
+    C2t = scipy.sparse.coo_array((data, (pair, state)), shape=(N * N, N))
 
     return C2t.tocsc()
 
@@ -242,11 +242,11 @@ def oom_components(Ct, C2t, rank_ind=None, lcc=None, tol_one=1e-2):
     Xi = np.zeros((M, N, M))
     for n in range(N):
         if lcc is not None:
-            C2t_n = C2t[:, lcc[n]]
+            C2t_n = C2t[:, [lcc[n]]]
             C2t_n = _reshape_sparse(C2t_n, (N1, N1))
             C2t_n = me.largest_connected_submatrix(C2t_n, lcc=lcc)
         else:
-            C2t_n = C2t[:, n]
+            C2t_n = C2t[:, [n]]
             C2t_n = _reshape_sparse(C2t_n, (N, N))
         Xi[:, n, :] = np.dot(F1.T, C2t_n.dot(F2))
 
@@ -332,6 +332,6 @@ def _reshape_sparse(A, shape):
     flat_indices = rows * ncols + cols
     newrows, newcols = divmod(flat_indices, shape[1])
     data = np.array(A[A.nonzero()].tolist()).flatten()
-    Anew = scipy.sparse.csc_matrix((data, (newrows, newcols)), shape=shape)
+    Anew = scipy.sparse.csc_array((data, (newrows, newcols)), shape=shape)
 
     return Anew

@@ -516,7 +516,9 @@ class MarkovStateModel(Model):
             transition_matrix = np.eye(self.n_states) if not self.sparse else identity(self.n_states)
         else:
             if self.sparse:
-                transition_matrix = self.transition_matrix ** power
+                transition_matrix = self.transition_matrix.copy()
+                for _ in range(power - 1):
+                    transition_matrix = transition_matrix @ self.transition_matrix
             else:
                 integer_power = np.issubdtype(type(power), np.integer)
                 if integer_power:

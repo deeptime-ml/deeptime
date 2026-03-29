@@ -103,7 +103,7 @@ class Network:
     @adjacency_matrix.setter
     def adjacency_matrix(self, value):
         if issparse(value):
-            self._adjacency_matrix = scipy.sparse.csr_matrix(value)
+            self._adjacency_matrix = scipy.sparse.csr_array(value)
         else:
             self._adjacency_matrix = value
 
