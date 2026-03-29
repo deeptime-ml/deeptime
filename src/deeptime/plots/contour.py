@@ -93,5 +93,5 @@ def plot_density(x, y, n_bins=100, weights=None, avoid_zero_counts=False, contou
         hist = np.maximum(hist, np.min(hist[hist.nonzero()]))
 
     # plot
-    mappable = ax.contourf(x_meshgrid, y_meshgrid, hist.T, **contourf_kws)
+    mappable = ax.contourf(x_meshgrid, y_meshgrid, hist, **contourf_kws)
     return ax, mappable
