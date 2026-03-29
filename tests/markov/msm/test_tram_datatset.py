@@ -155,6 +155,31 @@ def test_restrict_to_submodel_with_indices_input(test_input, submodel, expected)
     np.testing.assert_equal(tram_data.dtrajs, expected)
 
 
+def test_restrict_to_submodel_with_ttrajs():
+    # 3 trajectories but only 2 thermodynamic states (replica exchange scenario).
+    # Previously this would fail because restrict_to_submodel iterated over
+    # n_therm_states instead of len(dtrajs), skipping the third trajectory.
+    dtrajs = [np.asarray([0, 1, 2, 3, 1]),
+              np.asarray([2, 3, 2, 1, 0]),
+              np.asarray([1, 2, 3, 0, 1])]
+    ttrajs = [np.asarray([0, 0, 1, 1, 0]),
+              np.asarray([1, 1, 0, 0, 1]),
+              np.asarray([0, 1, 1, 0, 0])]
+    bias_matrices = make_matching_bias_matrix(dtrajs, n_therm_states=2)
+    tram_data = TRAMDataset(dtrajs=dtrajs, ttrajs=ttrajs, bias_matrices=bias_matrices)
+
+    assert tram_data.n_therm_states == 2
+    assert len(tram_data.dtrajs) == 3
+
+    tram_data.restrict_to_submodel([1, 2, 3])
+
+    # All 3 trajectories should be restricted: state 0 becomes -1
+    assert len(tram_data.dtrajs) == 3
+    for dtraj in tram_data.dtrajs:
+        assert 0 not in dtraj
+        assert -1 in dtraj
+
+
 @pytest.mark.parametrize(
     "lagtime", [1, 3]
 )

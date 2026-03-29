@@ -340,7 +340,7 @@ class TRAMDataset(Dataset):
         if isinstance(submodel, list) or isinstance(submodel, np.ndarray):
             submodel = self._submodel_from_states(submodel)
 
-        for k in range(self.n_therm_states):
+        for k in range(len(self.dtrajs)):
             # Get largest connected set
             # Assign -1 to all indices not in the submodel.
             restricted_dtraj = submodel.transform_discrete_trajectories_to_submodel(self.dtrajs[k])
