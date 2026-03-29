@@ -12,7 +12,7 @@ def setup_environment(session: nox.Session):
     session.env['SETUPTOOLS_ENABLE_FEATURES'] = "legacy-editable"
 
 
-PYTHON_VERSIONS = ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
 
 @nox.session(python=PYTHON_VERSIONS)
@@ -21,6 +21,7 @@ def tests(session: nox.Session) -> None:
     if 'cpp' in session.posargs:
         session.install("cmake")
         session.install("scikit-build")
+        session.install("pybind11")
 
         cmake_module_path = session.run("python", "devtools/cmake/find_cmake_module_path.py", silent=True).strip()
         session.log(f"Found cmake module path {cmake_module_path}")
@@ -64,7 +65,7 @@ def tests(session: nox.Session) -> None:
             session.log("Running without coverage")
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
-        if session.python != "3.8" and platform != 'darwin':
+        if platform != 'darwin':
             test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
 
         with session.cd("tests"):

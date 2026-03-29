@@ -20,7 +20,7 @@ authors = [
     {name = 'Steven Brunton'},
     {name = 'Frank Noé'}
 ]
-requires-python = ">= 3.8"
+requires-python = ">= 3.9"
 dependencies = [
     'numpy',
     'scipy>=1.9.0',
@@ -47,12 +47,8 @@ tests = [
     'pytest-xdist>=2.5.0',
     'flaky>=3.7.0',
     'tqdm>=4.64.0',
-    "cython>=0.29.30",
-    "pybind11>=2.10.1",
     "networkx",
     "matplotlib",
-    "cmake>=3.24",
-    "ninja; platform_system!='Windows'"
 ]
 docs = [
     "sphinx",
