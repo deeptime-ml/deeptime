@@ -46,5 +46,9 @@ class TestPickling(unittest.TestCase):
         msm = factory.msm_double_well()
         pickled = pickle.dumps(msm)
         # now simulate a newer version
-        with mock.patch('deeptime.__version__', '99+brand-new'), np.testing.assert_warns(UserWarning, ):
+        import warnings
+        with mock.patch('deeptime.__version__', '99+brand-new'), \
+                warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
             pickle.loads(pickled)
+            assert any(issubclass(x.category, UserWarning) for x in w)

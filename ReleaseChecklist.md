@@ -9,12 +9,8 @@
 - [ ] push the tag `git push --tags origin $version`
 - [ ] draft a release on github based on tag
 - [ ] pypi release:
-  - [ ] `python setup.py sdist` -> creates source tarball in `dist/`
-  - [ ] generate binary wheels for target platforms
-      - [ ] if there are new python versions, add them here: https://github.com/deeptime-ml/deeptime/blob/main/azure-cibuildwheel.yml
-      - [ ] enable pipeline deeptime build wheels https://dev.azure.com/clonker/deeptime/_build?definitionId=8
-      - [ ] download artifacts, put them into `dist/`
-  - [ ] upload source and binary releases with twine: `twine upload --skip-existing dist/*`
+  - [ ] pushing the tag triggers the GitHub Actions wheels workflow
+  - [ ] wheels and sdist are built and published to PyPI automatically via trusted publishing
 - [ ] if all good, change github draft release to proper release
 - [ ] conda-forge
   - merge pr if green!

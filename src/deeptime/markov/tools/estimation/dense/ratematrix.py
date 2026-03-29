@@ -188,7 +188,7 @@ class _ReversibleRateMatrixEstimator(_RateMatrixEstimator):
         theta0 = self.initial
         theta, f, d = fmin_l_bfgs_b(self.function_and_gradient, theta0, fprime=None, args=(),
                                     approx_grad=False, bounds=self.bounds, factr=self.tol,
-                                    pgtol=1.0E-11, disp=0, maxiter=self.maxiter, maxfun=self.maxiter, maxls=100)
+                                    pgtol=1.0E-11, maxiter=self.maxiter, maxfun=self.maxiter, maxls=100)
         if self.verbose:
             logging.info('l_bfgs_b says: '+str(d))
             logging.info('objective function value reached: %f' % f)

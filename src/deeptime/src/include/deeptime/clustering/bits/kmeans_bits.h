@@ -42,9 +42,9 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         for (py::ssize_t i = 0; i < n_frames; ++i) {
             int argMinDist = 0;
             {
-                T minDist = Metric::template compute(&chunk(i, 0), &centers(0, 0), dim);
+                T minDist = Metric::compute(&chunk(i, 0), &centers(0, 0), dim);
                 for (std::size_t j = 1; j < n_centers; ++j) {
-                    auto dist = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
+                    auto dist = Metric::compute(&chunk(i, 0), &centers(j, 0), dim);
                     if (dist < minDist) {
                         minDist = dist;
                         argMinDist = j;
@@ -68,7 +68,7 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
         for (py::ssize_t i = 0; i < n_frames; ++i) {
             std::vector<T> dists(n_centers);
             for (std::size_t j = 0; j < n_centers; ++j) {
-                dists[j] = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
+                dists[j] = Metric::compute(&chunk(i, 0), &centers(j, 0), dim);
             }
 #pragma omp flush(dists)
 
@@ -97,9 +97,9 @@ inline std::tuple<np_array<T>, np_array<int>> cluster(const np_array_nfc<T> &np_
                 for (auto i = begin; i < end; ++i) {
                     std::size_t argMinDist = 0;
                     {
-                        T minDist = Metric::template compute(&chunk(i, 0), &centers(0, 0), dim);
+                        T minDist = Metric::compute(&chunk(i, 0), &centers(0, 0), dim);
                         for (std::size_t j = 1; j < n_centers; ++j) {
-                            auto dist = Metric::template compute(&chunk(i, 0), &centers(j, 0), dim);
+                            auto dist = Metric::compute(&chunk(i, 0), &centers(j, 0), dim);
                             if(dist < minDist) {
                                 minDist = dist;
                                 argMinDist = j;
@@ -205,7 +205,7 @@ inline T costFunction(const np_array_nfc<T> &np_data, const np_array_nfc<T> &np_
 
     #pragma omp parallel for reduction(+:value) default(none) firstprivate(n_frames, data, centers, assignmentsPtr, dim)
     for (std::size_t i = 0; i < n_frames; i++) {
-        auto l = Metric::template compute(&data(i, 0), &centers(assignmentsPtr[i], 0), dim);
+        auto l = Metric::compute(&data(i, 0), &centers(assignmentsPtr[i], 0), dim);
         {
             value += l * l;
         }
