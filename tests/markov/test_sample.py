@@ -111,3 +111,27 @@ def test_index_states_subset():
     assert_equal(indices[2], [[0, 0]])
     assert_equal(indices[3], [[0, 1]])
     assert_equal(indices[4], [[0, 2]])
+
+
+def test_indices_by_distribution_with_pcca():
+    """Test that indices_by_distribution works with PCCA+ metastable distributions
+    when indices are restricted to the active set via the subset parameter."""
+    from deeptime.markov.msm import MaximumLikelihoodMSM
+
+    rng = np.random.RandomState(42)
+    dtraj = np.concatenate([
+        rng.choice([0, 1, 2, 3], size=1000),
+        np.array([4]),  # rarely visited, may fall outside active set
+    ])
+
+    msm = MaximumLikelihoodMSM().fit(dtraj, lagtime=1).fetch_model()
+    pcca = msm.pcca(n_metastable_sets=2)
+
+    # restrict indices to the active set so they match the metastable distributions
+    indices = sample.compute_index_states(dtraj, subset=msm.count_model.state_symbols)
+    assert_equal(len(indices), pcca.metastable_distributions.shape[1])
+
+    samples = sample.indices_by_distribution(indices, pcca.metastable_distributions, nsample=10)
+    assert_equal(len(samples), pcca.n_metastable)
+    for s in samples:
+        assert_equal(s.shape, (10, 2))
