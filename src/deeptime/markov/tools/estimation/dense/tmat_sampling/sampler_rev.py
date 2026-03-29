@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import issparse
 
 
 class SamplerRev:
@@ -12,6 +13,8 @@ class SamplerRev:
         else:
             dtype = C.dtype
 
+        if issparse(C):
+            C = C.toarray()
         self.C = C.astype(dtype)
 
         """Set up initial state of the chain"""
@@ -20,6 +23,8 @@ class SamplerRev:
             P0 = tmatrix(self.C, reversible=True, maxiter=100, warn_not_converged=False)
             assert P0.dtype == self.C.dtype
         else:
+            if issparse(P0):
+                P0 = P0.toarray()
             P0 = P0.astype(self.C.dtype)
         pi0 = stationary_distribution(P0).astype(self.C.dtype)
         V0 = pi0[:, np.newaxis] * P0

@@ -6,6 +6,7 @@ r"""Unit tests for the covariance module
 import flaky
 import numpy as np
 import pytest
+import scipy.sparse
 from deeptime.markov.tools.estimation import transition_matrix as tmatrix
 from deeptime.markov.tools.estimation.dense.tmat_sampling.tmatrix_sampler import TransitionMatrixSampler
 
@@ -79,3 +80,14 @@ def test_reversible_pi(dtype):
 
     # Check if sample mean and MLE agree within the sample standard deviation
     np.testing.assert_(np.all(np.abs(mean - P_mle) <= std))
+
+
+def test_reversible_sparse_input():
+    """Regression test for issue #310: SamplerRev should accept sparse C and P0."""
+    C_dense = np.array([[7048, 6, 0], [6, 2, 3], [0, 3, 2933]], dtype=np.float64)
+    C_sparse = scipy.sparse.csr_array(C_dense)
+
+    sampler = TransitionMatrixSampler(C_sparse, reversible=True)
+    P = sampler.sample()
+    assert P.shape == (3, 3)
+    np.testing.assert_allclose(P.sum(axis=1), 1.0, atol=1e-10)
