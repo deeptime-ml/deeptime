@@ -45,7 +45,7 @@ def tests(session: nox.Session) -> None:
                 n_processes = arg.split('=')[1]
                 session.log(f"Running tests with n={n_processes} jobs.")
                 pytest_args.append(f'--numprocesses={n_processes}')
-        session.install("-e", ".[tests,plotting,units]", '-v', silent=False)
+        session.install(".[tests,plotting,units]", '-v', silent=False)
 
         if 'lldb_torch_setup' in session.posargs:
             session.run("lldb", "--batch", "-o", "run", "-o", "bt", "-o", "c", "--", "python", "-m", "pytest",
@@ -66,9 +66,11 @@ def tests(session: nox.Session) -> None:
 
         test_dirs = [str((Path.cwd() / 'tests').absolute())]  # python tests
         if platform != 'darwin':
-            test_dirs += [str((Path.cwd() / 'deeptime').absolute())]  # doctests
+            test_dirs += ['deeptime']  # doctests via installed package
 
-        with session.cd("tests"):
+        # Run from a temp dir to avoid importing the source tree instead of the installed package
+        tmpdir = session.create_tmp()
+        with session.cd(tmpdir):
             session.run("python", "-m", "pytest", '-vv', '--doctest-modules', '--durations=20', *pytest_args,
                         '--pyargs', *test_dirs)
 
