@@ -141,6 +141,18 @@ class PCCAModel(Model):
             A matrix containing the probability distribution of each active set
             state, given that we are in one of the m metastable sets,
             i.e. p(state | metastable). The row sums of p_out are 1.
+
+        Notes
+        -----
+        These distributions are defined over the *active set* states only. When using them with
+        :func:`deeptime.markov.sample.indices_by_distribution`, the index array must also be restricted
+        to the active set. This can be done by passing the active set symbols as the ``subset`` parameter
+        to :func:`deeptime.markov.sample.compute_index_states`:
+
+        .. code-block:: python
+
+            indices = sample.compute_index_states(dtrajs, subset=msm.count_model.state_symbols)
+            samples = sample.indices_by_distribution(indices, pcca.metastable_distributions, nsample=100)
         """
         return self._metastable_distributions
 

@@ -144,6 +144,20 @@ def indices_by_distribution(indices: List[np.ndarray], distributions, nsample):
         Each element is an index array with a number of rows equal to nsample, with rows consisting of a
         tuple (i, t), where i is the index of the trajectory and t is the time index within the trajectory.
 
+    Notes
+    -----
+    When using distributions defined over a subset of states (e.g., PCCA+ metastable distributions which are
+    defined over the MSM active set only), the ``indices`` array must cover the same subset. Use the ``subset``
+    parameter in :func:`compute_index_states` to restrict it:
+
+    .. code-block:: python
+
+        indices = compute_index_states(dtrajs, subset=msm.count_model.state_symbols)
+        samples = indices_by_distribution(indices, pcca.metastable_distributions, nsample=100)
+
+    See Also
+    --------
+    compute_index_states : Compute trajectory/time indices, with optional ``subset`` parameter.
     """
     # how many states in total?
     n = len(indices)
