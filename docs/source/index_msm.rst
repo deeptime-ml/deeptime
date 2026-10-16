@@ -28,7 +28,7 @@ Assuming that :math:`S` is represented by the enumeration :math:`\{1,\ldots,n\}`
 
 .. math::  P_{ij} = \mathbb{P}(X_{t+1}=j \mid X_t = i)\quad\forall t,
 
-i.e., the probability of transitioning to state :math:`i` given one is currently in state :math:`j`.
+i.e., the probability of transitioning to state :math:`j` given one is currently in state :math:`i`.
 This also means that :math:`P` is a row-stochastic matrix
 
 .. math:: \sum_{j=1}^n P_{ij} = 1 \quad\forall i=1,\ldots,n.

@@ -31,14 +31,18 @@ Subsequently, an Estimator for :code:`MeanModel` s can be implemented:
 
 .. code-block:: python
 
+    import typing
+
+    import numpy as np
     from deeptime.base import Estimator
+
     class MeanEstimator(Estimator):
 
         def __init__(self, axis=-1):
             super(MeanEstimator, self).__init__()
             self.axis = axis
 
-        def fetch_model(self, data) -> typing.Optional[MeanModel]:
+        def fetch_model(self) -> typing.Optional[MeanModel]:
             return self._model
 
         def fit(self, data):
@@ -116,7 +120,7 @@ of the :code:`MeanEstimator`, this style of documentation would look like the fo
 
 .. code-block:: python
 
-    class MeanEstimator(deeptime.base.Estimator):
+    class MeanEstimator(Estimator):
         r""" The mean estimator. It estimates the mean using a complicated algorithm
         :footcite:`authorofthecomplicatedalgo1988`.
 
@@ -138,7 +142,7 @@ of the :code:`MeanEstimator`, this style of documentation would look like the fo
             super(MeanEstimator, self).__init__()
             self.axis = axis
 
-        def fetch_model(self, data) -> typing.Optional[MeanModel]:
+        def fetch_model(self) -> typing.Optional[MeanModel]:
             r"""Fetches the current model. Can be `None` in case :meth:`fit` was not called yet.
 
             Returns
