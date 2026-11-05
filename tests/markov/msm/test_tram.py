@@ -25,7 +25,8 @@ def test_unpack_input():
     arr = np.zeros(10)
     with pytest.raises(ValueError) as exinfo:
         TRAM().fit((arr, arr, arr, arr))
-        assert 'Unexpected number of arguments' in exinfo.value
+
+    assert 'Unexpected number of arguments' in str(exinfo.value)
 
 
 @pytest.mark.parametrize(
