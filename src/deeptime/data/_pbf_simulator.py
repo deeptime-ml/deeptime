@@ -269,10 +269,10 @@ class PBFSimulator:
             out = []
             for k, ax in enumerate(axes.flat):
                 X = trajectories[k][i]
-                for tp in plot_handles[k].collections:
-                    tp.remove()
+                # ContourSet is an artist itself
+                plot_handles[k].remove()
                 plot_handles[k] = ax.contourf(grid[0], grid[1], X.reshape((len(gridy), len(gridx))))
-                out += plot_handles[k].collections
+                out += [plot_handles[k]]
             return out
 
         update = update_scatter if mode == "scatter" else update_contourf

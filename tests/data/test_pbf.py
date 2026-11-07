@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from numpy.testing import assert_equal, assert_raises
 
 import deeptime
@@ -28,3 +29,15 @@ def test_pbf_simulator_properties():
                              timestep=1e-5, rest_density=.2, tensile_instability_distance=.1, tensile_instability_k=.2)
     assert_equal(simulator.domain_size, [5, 5])
     assert_equal(simulator.n_particles, 200)
+
+
+@pytest.mark.parametrize("mode", ["scatter", "contourf"])
+def test_make_animation(mode):
+    pytest.importorskip("matplotlib")
+    sim = deeptime.data.position_based_fluids(n_burn_in=5)
+    traj = sim.simulate_oscillatory_force(1, 3, .05)
+    if mode == "contourf":
+        traj = sim.transform_to_density(traj, 4, 4, n_jobs=1)
+    ani = sim.make_animation(traj, mode=mode, n_grid_x=4, n_grid_y=4)
+    # rendering drives the frame update, which is where incompatible matplotlib APIs surface
+    ani.to_jshtml()
