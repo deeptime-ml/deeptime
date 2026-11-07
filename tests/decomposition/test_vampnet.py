@@ -169,3 +169,32 @@ def test_constructor_applies_dtype_to_lobes(dtype, torch_dtype):
     net = VAMPNet(lobe=lobe, lobe_timelagged=lobe_tl, dtype=dtype)
     assert_(next(net.lobe.parameters()).dtype == torch_dtype)
     assert_(next(net.lobe_timelagged.parameters()).dtype == torch_dtype)
+
+
+def test_symeig_reg_regularize_is_bounded_below():
+    # A round-off error of order -epsilon in a rank-deficient direction must not cancel the
+    # regularization: the regularized eigenvalues are bounded from below by epsilon.
+    from deeptime.decomposition.deep._vampnet import symeig_reg, sym_inverse
+    eps = 1e-6
+    mat = torch.diag(torch.tensor([1., -eps], dtype=torch.float64))
+    eigval, _ = symeig_reg(mat, epsilon=eps, mode='regularize')
+    assert torch.all(eigval >= eps)
+    assert torch.isfinite(sym_inverse(mat, epsilon=eps, mode='regularize')).all()
+
+
+def test_vamp_score_float32_matches_float64_for_rank_deficient_features():
+    # Softmax features sum to one, so their covariance has an exact null direction. With float32
+    # covariance accumulation over a large batch, the round-off in that direction is of the order of
+    # epsilon and inflated the score far beyond its bound of n_features in the past.
+    from deeptime.decomposition.deep import vamp_score
+    torch.manual_seed(0)
+    n, d = 75000, 6
+    x = torch.randn(n, 3, dtype=torch.float64)
+    w = torch.randn(3, d, dtype=torch.float64)
+    chi = torch.softmax(x @ w, dim=1)
+    chi_lagged = torch.softmax((x + 0.3 * torch.randn_like(x)) @ w, dim=1)
+    ref = vamp_score(chi, chi_lagged, method='VAMP2', mode='regularize')
+    out = vamp_score(chi.float(), chi_lagged.float(), method='VAMP2', mode='regularize')
+    assert out.dtype == torch.float32
+    assert float(out) <= d + 1e-3
+    assert abs(float(out) - float(ref)) < 1e-3

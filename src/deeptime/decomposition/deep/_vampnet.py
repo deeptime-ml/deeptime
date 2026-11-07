@@ -35,10 +35,6 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
     """
     assert mode in sym_inverse.valid_modes, f"Invalid mode {mode}, supported are {sym_inverse.valid_modes}"
 
-    if mode == 'regularize':
-        identity = torch.eye(mat.shape[0], dtype=mat.dtype, device=mat.device)
-        mat = mat + epsilon * identity
-
     # Calculate eigvalues and potentially eigvectors
     eigval, eigvec = eigh(mat)
 
@@ -52,8 +48,11 @@ def symeig_reg(mat, epsilon: float = 1e-6, mode='regularize', eigenvectors=True)
         if eigenvectors:
             eigvec = eigvec[mask]
     elif mode == 'regularize':
-        # Calculate eigvalues and eigvectors
-        eigval = torch.abs(eigval)
+        # Take the absolute value and add epsilon afterwards (as documented). This bounds the regularized
+        # eigenvalues from below by epsilon regardless of round-off in `mat`. Shifting the matrix by epsilon
+        # before the decomposition does not: a round-off error of order -epsilon in a rank-deficient direction
+        # (e.g. the constant direction of softmax outputs) cancels the shift and yields arbitrarily large inverses.
+        eigval = torch.abs(eigval) + epsilon
     elif mode == 'clamp':
         eigval = torch.clamp_min(eigval, min=epsilon)
 
@@ -204,6 +203,14 @@ def vamp_score(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2'
     assert method in valid_score_methods, f"Invalid method '{method}', supported are {valid_score_methods}"
     assert data.shape == data_lagged.shape, f"Data and data_lagged must be of same shape but were {data.shape} " \
                                             f"and {data_lagged.shape}."
+    dtype = data.dtype
+    if dtype == torch.float32 and data.device.type != 'mps':
+        # The regularization parameter epsilon is of the order of the float32 round-off of the covariance
+        # matrices for large batches (about 1e-6 for 7.5e4 samples with MKL sgemm), which lets rank-deficient
+        # directions (e.g. the softmax sum) inflate the score arbitrarily. Accumulate the covariances and
+        # perform the whitening in float64; gradients propagate through the cast. (MPS has no float64.)
+        data = data.double()
+        data_lagged = data_lagged.double()
     out = None
     if method == 'VAMP1':
         koopman = koopman_matrix(data, data_lagged, epsilon=epsilon, mode=mode)
@@ -232,7 +239,7 @@ def vamp_score(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2'
             2. * multi_dot([s, u_t, c0t, v]) - multi_dot([s, u_t, c00, u, s, v_t, ctt, v])
         )
     assert out is not None
-    return 1 + out
+    return (1 + out).to(dtype)
 
 
 def vampnet_loss(data: "torch.Tensor", data_lagged: "torch.Tensor", method='VAMP2', epsilon: float = 1e-6,
