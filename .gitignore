@@ -75,7 +75,6 @@ instance/
 
 # Sphinx documentation
 docs/_build/
-/docs/out/
 
 # PyBuilder
 target/
@@ -128,7 +127,7 @@ tests/**/*.npz
 
 # sphinx generated rst
 docs/**/generated
-docs/source/examples
-docs/source/datasets
+docs/source/out/
+docs/source/sg_execution_times.rst
 docs/node_modules
 node_modules/

@@ -60,12 +60,25 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
     'matplotlib.sphinxext.plot_directive',
     'sphinxcontrib.katex',
     'nbsphinx',
     'sphinx_gallery.gen_gallery',
     #'sphinx_gallery.load_style'
 ]
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy', None),
+    'sklearn': ('https://scikit-learn.org/stable', None),
+    'torch': ('https://docs.pytorch.org/docs/stable', None),
+    'matplotlib': ('https://matplotlib.org/stable', None),
+}
+
+# sphinx_gallery_conf holds a sort-key class, which Sphinx cannot pickle for its config cache
+suppress_warnings = ['config.cache']
 
 nbsphinx_prolog = ""
 nbsphinx_epilog = ""

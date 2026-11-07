@@ -53,8 +53,8 @@ def plot_scatter(ax, states, observations, obs_ref=None):
         ax.scatter(*observations[~mask].T, color='blue', label='State 2')
         ax.legend()
     else:
-        scatter1 = ax.scatter(*observations[mask].T, cmap=mpl.cm.get_cmap('Greens'), c=obs_ref[mask][:, 1])
-        scatter2 = ax.scatter(*observations[~mask].T, cmap=mpl.cm.get_cmap('Blues'), c=obs_ref[~mask][:, 1])
+        scatter1 = ax.scatter(*observations[mask].T, cmap=mpl.colormaps['Greens'], c=obs_ref[mask][:, 1])
+        scatter2 = ax.scatter(*observations[~mask].T, cmap=mpl.colormaps['Blues'], c=obs_ref[~mask][:, 1])
         h1, l1 = scatter1.legend_elements(num=1)
         h2, l2 = scatter2.legend_elements(num=1)
         ax.add_artist(ax.legend(handles=h1 + h2, labels=["State 1", "State 2"]))
