@@ -50,7 +50,7 @@ class TestConnectedSetsDense(unittest.TestCase):
             self.assertTrue(np.all(self.cc_undirected[i] == np.sort(cc[i])))
 
 
-class TestLargestConnectedSetSparse(unittest.TestCase):
+class TestLargestConnectedSetDense(unittest.TestCase):
     def setUp(self):
         C1 = np.array([[1, 4, 3], [3, 2, 4], [4, 5, 1]])
         C2 = np.array([[0, 1], [1, 0]])

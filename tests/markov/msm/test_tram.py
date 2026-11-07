@@ -294,7 +294,7 @@ def test_fit_with_dataset(init_strategy):
 @pytest.mark.parametrize(
     "init_strategy", ["MBAR", None]
 )
-def test_fit_with_dataset(init_strategy):
+def test_fit_without_dataset(init_strategy):
     input_data = make_random_input_data(20, 2)
     tram = TRAM(init_strategy=init_strategy)
     tram.fit(input_data)
