@@ -1,5 +1,3 @@
-.. _method_examples:
-
 General examples
 ----------------
 

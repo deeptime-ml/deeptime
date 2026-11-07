@@ -983,7 +983,7 @@ def log_likelihood(C, T):
     .. math:: l(C|P)=\sum_{i,j=1}^{M}c_{ij} \log p_{ij}.
 
     The likelihood describes the probability of making an observation
-    :math:`C` for a given model :math:`P`.
+    :math:`C` for a given model :math:`P` [1]_.
 
     Examples
     --------
@@ -1208,14 +1208,14 @@ def tmatrix_sampler(C, reversible=False, mu=None, T0=None, nsteps=None, prior='s
 
     **Reversible sampling**
 
-    Using a MCMC sampler outlined in .. [1] it is ensured that samples
+    Using a MCMC sampler outlined in [1]_ it is ensured that samples
     from the posterior are reversible, i.e. there is a probability
     vector :math:`(\mu_i)` such that :math:`\mu_i t_{ij} = \mu_j
     t_{ji}` holds for all :math:`i,j`.
 
     **Reversible sampling with fixed stationary vector**
 
-    Using a MCMC sampler outlined in .. [2] it is ensured that samples
+    Using a MCMC sampler outlined in [2]_ it is ensured that samples
     from the posterior fulfill detailed balance with respect to a given
     probability vector :math:`(\mu_i)`.
 
