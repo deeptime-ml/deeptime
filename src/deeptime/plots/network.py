@@ -21,7 +21,7 @@ class Network:
     pos : ndarray or dict[int, ndarray]
         user-defined positions as (n,2) array
     cmap : matplotlib.colors.Colormap or str, default=None
-        The colormap for `state_color`s.
+        The colormap for `state_color` values.
     state_sizes : ndarray, optional, default=None
         List of state sizes to plot, must be of length `n_states`. It effectively evaluates as
 

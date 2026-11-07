@@ -186,6 +186,7 @@ class TRAM(_MSMBaseEstimator):
                was sampled at. If `ttrajs = None`, we assume no replica exchange was done. In this case we assume each
                trajectory  corresponds to a unique thermodynamic state, and `n_therm_states` equals the size of
                `dtrajs`.
+
             If the data is supplied in form of a TRAMDataset, the lagtime of the dataset overwrites the chosen lagtime
             of the TRAM estimator.
         model : TRAMModel, optional, default=None

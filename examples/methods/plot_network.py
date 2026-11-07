@@ -38,7 +38,7 @@ ax = axes[0][1]
 ax.set_title('Plotting the gross flux')
 flux = MarkovStateModel(P).reactive_flux(source_states=[2], target_states=[3])
 positions = nx.planar_layout(nx.from_numpy_array(flux.gross_flux))
-cmap = mpl.cm.get_cmap('coolwarm')
+cmap = mpl.colormaps['coolwarm']
 network = Network(flux.gross_flux, positions, edge_curvature=2.,
                   state_colors=flux.forward_committor, cmap=cmap)
 network.plot(ax=ax)
