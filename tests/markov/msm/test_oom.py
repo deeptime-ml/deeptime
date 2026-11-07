@@ -480,8 +480,11 @@ def test_fingerprint_relaxation(oom_msm_scenario):
             fp1 = msm.fingerprint_relaxation(msm.stationary_distribution, a, k=k)
             # first timescale is infinite
             np.testing.assert_equal(fp1[0][0], np.inf)
-            # next timescales are identical to timescales:
-            np.testing.assert_allclose(fp1[0][1:], msm.timescales(4), atol=1e-2)
+            # next timescales are identical to timescales. The rank-deficient incomplete scenario has
+            # eigenvalues at machine precision; their timescales are numerical noise that differs between
+            # decompositions and platforms, so only eigenvalues above the noise floor are compared.
+            meaningful = np.abs(msm.eigenvalues(k)[1:]) > 1e-12
+            np.testing.assert_allclose(fp1[0][1:][meaningful], msm.timescales(k - 1)[meaningful], atol=1e-2)
             # dynamical amplitudes should be near 0 because we are in equilibrium
             np.testing.assert_(np.max(np.abs(fp1[1][1:])) < 1e-10)
             # off-equilibrium relaxation
