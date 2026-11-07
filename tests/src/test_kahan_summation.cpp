@@ -126,7 +126,11 @@ TEST_CASE("kdot", "[kahan_summation]") {
         b[1] = y;
         auto correct = a[0] * b[0] + a[1] * b[1];
         deeptime::numeric::kahan::kdot_raw(a, b, c, 1, 2, 1);
-        REQUIRE_THAT(c[0], Catch::Matchers::WithinRel(correct, 0.001));
+        // The reference value is computed with plain floating-point arithmetic. When the compiler
+        // contracts it into a fused multiply-add (the default with -march=x86-64-v3 and newer GCC),
+        // exact cancellation like x*x - x*x leaves a residual of ~1e-17 instead of 0, which a purely
+        // relative tolerance cannot absorb. Accept a tiny absolute deviation as well.
+        REQUIRE_THAT(c[0], Catch::Matchers::WithinRel(correct, 0.001) || Catch::Matchers::WithinAbs(correct, 1e-12));
     }
 
     SECTION("check correct output matrix") {
