@@ -77,7 +77,6 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
           cmake --build build-cpp --target run_tests
 
-  # Single check to require in branch protection; fails if any matrix job did not succeed.
   ci-ok:
     name: CI passed
     if: always()
