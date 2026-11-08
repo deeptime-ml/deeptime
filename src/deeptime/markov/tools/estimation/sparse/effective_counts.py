@@ -28,18 +28,18 @@ def _split_sequences_singletraj(dtraj, nstates, lag):
         lag time
 
     """
-    sall = [[] for _ in range(nstates)]
-    res_states = []
-    res_seqs = []
-
-    for t in range(len(dtraj)-lag):
-        sall[dtraj[t]].append(dtraj[t+lag])
-
-    for i in range(nstates):
-        if len(sall[i]) > 0:
-            res_states.append(i)
-            res_seqs.append(np.array(sall[i]))
-    return res_states, res_seqs
+    dtraj = np.asarray(dtraj)
+    starts = dtraj[:max(len(dtraj) - lag, 0)]
+    if len(starts) == 0:
+        return [], []
+    # count visits per start state; states beyond nstates have no slot in the result
+    counts = np.bincount(starts, minlength=nstates)
+    if len(counts) > nstates:
+        raise IndexError('list index out of range')
+    states = np.flatnonzero(counts)
+    # group targets by start state, keeping time order within each group
+    targets = dtraj[lag:][np.argsort(starts, kind='stable')]
+    return states.tolist(), np.split(targets, np.cumsum(counts[states])[:-1])
 
 
 def _split_sequences_multitraj(dtrajs, lag):
