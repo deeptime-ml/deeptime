@@ -11,7 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  # Compile the extension once per (OS, Python) and hand the wheel to the test shards below.
+  # A flaky shard can then be re-run without rebuilding anything.
+  build:
+    name: build (${{ matrix.os }}, ${{ matrix.python-version }})
     strategy:
       fail-fast: false
       matrix:
@@ -21,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # setuptools-scm needs the tags for the version
 
       - uses: actions/setup-python@v5
         with:
@@ -32,17 +35,81 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install libomp
 
+      - name: Build wheel
+        run: |
+          python -m pip install build
+          python -m build --wheel --outdir dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 3
+
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.python-version }}, ${{ matrix.suite.name }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        # Shards are balanced by runtime: markov alone is about half of the suite.
+        suite:
+          - name: markov
+            paths: tests/markov
+          - name: decomposition
+            paths: tests/decomposition tests/basis tests/kernels tests/sindy tests/covariance tests/numeric
+          - name: misc
+            paths: tests/base tests/clustering tests/data tests/plots tests/util tests/test_readme.py --pyargs deeptime --doctest-modules
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install OpenMP (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist
+
+      - name: Install wheel with test dependencies
+        shell: bash
+        run: |
+          wheel=$(ls dist/*.whl)
+          python -m pip install "${wheel}[tests,plotting,units]"
+
+      - name: Run tests
+        shell: bash
+        run: >
+          python -m pytest ${{ matrix.suite.paths }} -vv
+          --durations=20 --numprocesses=2
+
+  coverage:
+    name: coverage (ubuntu-latest, 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
       - name: Install package with test dependencies
         run: pip install ".[tests,plotting,units]" -v
 
-      - name: Run tests
-        run: >
-          python -m pytest tests/ -vv
-          --pyargs deeptime --doctest-modules
-          --durations=20 --numprocesses=2
-
       - name: Run tests with coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         run: >
           python -m pytest tests/ -vv
           --pyargs deeptime --doctest-modules
@@ -50,7 +117,6 @@ jobs:
           --cov=deeptime --cov-report=xml
 
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
@@ -80,10 +146,12 @@ jobs:
   ci-ok:
     name: CI passed
     if: always()
-    needs: [test, cpp-tests]
+    needs: [build, test, coverage, cpp-tests]
     runs-on: ubuntu-latest
     steps:
       - name: Check that all jobs succeeded
         run: |
+          test "${{ needs.build.result }}" = "success"
           test "${{ needs.test.result }}" = "success"
+          test "${{ needs.coverage.result }}" = "success"
           test "${{ needs.cpp-tests.result }}" = "success"
