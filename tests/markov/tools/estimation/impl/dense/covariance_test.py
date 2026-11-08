@@ -8,7 +8,8 @@ import unittest
 import numpy as np
 from tests.markov.tools.numeric import assert_allclose
 
-from deeptime.markov.tools.estimation.dense.covariance import tmatrix_cov, dirichlet_covariance, error_perturbation
+from deeptime.markov.tools.estimation.dense.covariance import tmatrix_cov, dirichlet_covariance, error_perturbation, \
+    error_perturbation_single
 
 
 class TestCovariance(unittest.TestCase):
@@ -87,6 +88,10 @@ class TestErrorPerturbation(unittest.TestCase):
         """Error-perturbation scalar observable"""
         self.x = (self.S1[:, :, np.newaxis] * self.cov * self.S1[:, np.newaxis, :]).sum()
 
+        """Second scalar observable g(P)=P_12+P_23 and its covariance with f"""
+        self.R1 = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]])
+        self.xr = (self.S1[:, :, np.newaxis] * self.cov * self.R1[:, np.newaxis, :]).sum()
+
         """Error-perturbation vector observable"""
         tmp = self.S2[:, np.newaxis, :, :, np.newaxis] * self.cov[np.newaxis, np.newaxis, :, :, :] * \
               self.S2[np.newaxis, :, :, np.newaxis, :]
@@ -101,3 +106,11 @@ class TestErrorPerturbation(unittest.TestCase):
 
         Xn = error_perturbation(self.C, self.S2)
         assert_allclose(Xn, self.X)
+
+    def test_error_perturbation_single(self):
+        xn = error_perturbation_single(self.C, self.S1)
+        assert_allclose(xn, self.x)
+
+        xr = error_perturbation_single(self.C, self.S1, self.R1)
+        assert_allclose(xr, self.xr)
+        assert_allclose(xr, error_perturbation(self.C, np.stack([self.S1, self.R1]))[0, 1])

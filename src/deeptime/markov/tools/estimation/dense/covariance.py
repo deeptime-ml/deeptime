@@ -100,11 +100,9 @@ def error_perturbation_single(C, S, R=None):
          Variance (covariance) of observable(s)
 
     """
-    cov = tmatrix_cov(C)  # (M, M, M)
     if R is None:
-        R = S
-    X = S[:, :, np.newaxis] * cov * R[:, np.newaxis, :]
-    return X.sum()
+        return error_perturbation_cov(C, np.asarray(S)[np.newaxis])[0, 0]
+    return error_perturbation_cov(C, np.stack([S, R]))[0, 1]
 
 
 def error_perturbation_cov(C, S):
