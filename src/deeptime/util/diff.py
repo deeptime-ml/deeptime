@@ -2,8 +2,6 @@ import numpy as _np
 import numpy as np
 from scipy import sparse as _sparse
 
-from deeptime.util.data import sliding_window
-
 
 def finite_difference_coefficients(x_bar, xs, k=1):
     r"""Calculates finite difference coefficients. The coefficients are computed so that
@@ -30,35 +28,35 @@ def finite_difference_coefficients(x_bar, xs, k=1):
         An array `w` with weights so that the dot product :math:`w \cdot f(\mathrm{xs}) \approx f^{(k)}(\bar{x})`
         is approximately the function's `k`-th derivative at :math:`\bar{x}`.
     """
-    n = len(xs)
+    xs = _np.asarray(xs)
+    n = xs.shape[0]
     if k >= n:
-        raise ValueError("length(xs) = {} has to be larger than k = {}".format(len(xs), k))
+        raise ValueError("length(xs) = {} has to be larger than k = {}".format(n, k))
 
-    if _np.min(xs) > x_bar or _np.max(xs) < x_bar:
+    # windows may be batched along trailing axes of xs, with one x_bar per window
+    if _np.any(xs.min(axis=0) > x_bar) or _np.any(xs.max(axis=0) < x_bar):
         raise ValueError("the grid xs has to be so that min(xs) <= xbar <= max(xs)")
 
     # change to m = n - 1 to compute coeffs for all derivatives, then output C
     m = k
 
+    batch_shape = xs.shape[1:]
+    dx = xs - x_bar
+    # node_diffs[i, j] = xs[i] - xs[j]
+    node_diffs = xs[:, None] - xs[None, :]
+    # orders above i are still zero at step i, so every step can update all orders
+    s = _np.arange(m + 1).reshape((m + 1,) + (1,) * len(batch_shape))
     c1 = 1
-    c4 = xs[0] - x_bar
-    C = _np.zeros(shape=(n, m + 1))
-    C[0, 0] = 1
+    # C[:, 0] is a zero padding for order -1, so the earlier nodes update all orders at once
+    C = _np.zeros(shape=(n, m + 2) + batch_shape)
+    C[0, 1] = 1
     for i in range(1, n):
-        mn = min(i, m)
-        c2 = 1
-        c5 = c4
-        c4 = xs[i] - x_bar
-        for j in range(0, i):
-            c3 = xs[i] - xs[j]
-            c2 = c2 * c3
-            if j == i - 1:
-                for s in range(mn, 0, -1):
-                    C[i, s] = c1 * (s * C[i - 1, s - 1] - c5 * C[i - 1, s]) / c2
-                C[i, 0] = -c1 * c5 * C[i - 1, 0] / c2
-            for s in range(mn, 0, -1):
-                C[j, s] = (c4 * C[j, s] - s * C[j, s - 1]) / c3
-            C[j, 0] = c4 * C[j, 0] / c3
+        c3 = node_diffs[i, :i]
+        c2 = c3.prod(axis=0)
+        c4, c5 = dx[i], dx[i - 1]
+        C[i, 2:] = c1 * (s[1:] * C[i - 1, 1:-1] - c5 * C[i - 1, 2:]) / c2
+        C[i, 1] = -c1 * c5 * C[i - 1, 1] / c2
+        C[:i, 1:] = (c4 * C[:i, 1:] - s * C[:i, :-1]) / c3[:, None]
         c1 = c2
     c = C[:, -1]
     return c
@@ -79,25 +77,23 @@ def finite_difference_operator_midpoints(xs, k=1, window_radius=2):
     -------
     """
     n_nodes = len(xs)
-    indices = _np.arange(0, n_nodes, step=1, dtype=int)
     entries_per_row = 2 * window_radius + 1
     data = _np.empty(shape=(entries_per_row * (n_nodes-1),), dtype=xs.dtype)
-    row_data = _np.empty_like(data)
-    col_data = _np.empty_like(data)
+    if n_nodes < entries_per_row:
+        raise ValueError(f"the sequence needs to have at least length 2*radius+1 but has length={n_nodes}.")
+    if n_nodes < 2:
+        raise ValueError(f"the grid needs to have at least two nodes but has length={n_nodes}.")
 
-    offset = 0
-    for row, window in enumerate(sliding_window(indices, radius=window_radius, fixed_width=True)):
-        window_grid = xs[window]
-        window_slice = slice(offset, offset + len(window))
-        data[window_slice] = finite_difference_coefficients(.5 * (xs[row] + xs[row + 1]), window_grid, k=k)
-        row_data[window_slice] = row
-        col_data[window_slice] = window
+    rows = _np.arange(n_nodes - 1)
+    starts = _np.clip(rows - window_radius, 0, n_nodes - entries_per_row)
+    # one window per column, matching the batch axis of finite_difference_coefficients
+    windows = starts + _np.arange(entries_per_row)[:, None]
+    midpoints = .5 * (xs[:-1] + xs[1:])
+    data[:] = finite_difference_coefficients(midpoints, xs[windows], k=k).T.ravel()
 
-        offset += len(window)
-        if row == n_nodes-2:
-            break
-
-    return _sparse.csc_matrix((data, (row_data, col_data)), shape=(n_nodes-1, n_nodes))
+    indptr = _np.arange(0, len(data) + 1, entries_per_row)
+    operator = _sparse.csr_matrix((data, windows.T.ravel(), indptr), shape=(n_nodes-1, n_nodes))
+    return operator.tocsc()
 
 
 def _cumtrapz_operator(xs):
