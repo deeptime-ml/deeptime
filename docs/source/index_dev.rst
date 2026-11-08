@@ -8,6 +8,82 @@ This document is mainly for aspiring contributors to familiarize themselves with
 When it is planned to add a new estimator / model / transformer, the module `deeptime.base <api/index_base.rst>`__
 defines the interfaces, which are described in some more detail subsequently.
 
+Installing from source
+----------------------
+
+Deeptime contains C++ extensions, so building from source needs a C++17 compiler (GCC, Clang, MSVC or Apple's
+command line tools). CMake and Ninja are fetched automatically by the build backend if they are not installed.
+On macOS, OpenMP support requires ``brew install libomp``.
+
+The current development version can be installed directly from GitHub
+
+.. code-block:: bash
+
+    pip install git+https://github.com/deeptime-ml/deeptime.git@main
+
+or from a local clone. For development, an editable install together with the test dependencies is the most
+convenient; changes to the Python sources are picked up without reinstalling, changes to the C++ sources
+require a reinstall.
+
+.. code-block:: bash
+
+    git clone https://github.com/deeptime-ml/deeptime.git
+    cd deeptime
+    pip install -e ".[tests]"
+    pytest tests/
+
+Building as a standalone CMake project
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The C++ library and its tests can also be built directly with CMake. This requires Python (with development
+headers), NumPy and pybind11 to be available.
+
+.. code-block:: bash
+
+    cmake -B build \
+      -DDEEPTIME_BUILD_CPP_TESTS=ON \
+      -DPython_ROOT_DIR=/path/to/venv \
+      -DPython_FIND_VIRTUALENV=ONLY \
+      -Dpybind11_DIR=$(python -c "import pybind11; print(pybind11.get_cmake_dir())")
+
+    cmake --build build --target tests
+    ./build/tests/tests
+
+CMake options:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 15 55
+
+    * - Variable
+      - Default
+      - Description
+    * - ``DEEPTIME_BUILD_CPP_TESTS``
+      - ``OFF``
+      - Build the C++ unit tests (Catch2)
+    * - ``DEEPTIME_VERSION``
+      - ``0.0.0``
+      - Version string without commit offset
+    * - ``DEEPTIME_VERSION_INFO``
+      - ``0.0.0``
+      - Full version string
+
+Variables for dependency discovery:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 70
+
+    * - Variable
+      - Description
+    * - ``pybind11_DIR``
+      - Path to pybind11's CMake config, e.g. from
+        ``python -c "import pybind11; print(pybind11.get_cmake_dir())"``
+    * - ``Python_ROOT_DIR``
+      - Python installation or virtualenv prefix (helps CMake find the right interpreter)
+    * - ``Python_FIND_VIRTUALENV``
+      - Set to ``ONLY`` when using a virtualenv to prevent CMake from picking up the system Python
+
 Writing a custom estimator
 --------------------------
 When writing a custom estimator, first one should decide on what is supposed to be estimated. To this end, a
