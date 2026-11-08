@@ -123,15 +123,18 @@ def error_perturbation_cov(C, S):
         Covariance matrix for given sensitivity
 
     """
-    K = S.shape[0]
-    X = np.zeros((K, K))
-    cov = tmatrix_cov(C)
-    for i in range(K):
-        for j in range(K):
-            Q = S[i, :, :]
-            R = S[j, :, :]
-            X[i, j] = (Q[:, :, np.newaxis] * cov * R[:, np.newaxis, :]).sum()
-    return X
+    S = np.asarray(S, dtype=float)
+    K, M, N = S.shape
+    # Row r of the Dirichlet covariance is (diag(alpha0[r] * alpha[r]) - alpha[r] alpha[r]^T) / norm[r]
+    alpha = C + 1.0
+    alpha0 = alpha.sum(axis=1)
+    norm = alpha0 ** 2 * (alpha0 + 1.0)
+    # Diagonal part: weighted Gram matrix of the flattened sensitivities
+    flat = S.reshape(K, M * N)
+    weights = ((alpha0 / norm)[:, np.newaxis] * alpha).ravel()
+    # Rank-one part: u[r, i] = S[i, r] . alpha[r], as one matrix-vector product per row r
+    u = (S.transpose(1, 0, 2) @ alpha[:, :, np.newaxis])[:, :, 0]
+    return (flat * weights) @ flat.T - u.T @ (u / norm[:, np.newaxis])
 
 
 def error_perturbation(C, S):
