@@ -383,12 +383,13 @@ def _M2_dense(X, Y, weights=None, diag_only=False):
     """
     if weights is not None:
         if diag_only:
-            return np.sum(weights[:, None] * X * Y, axis=0)
+            return np.einsum('i,ij,ij->j', weights, X, Y)
         else:
             return np.dot((weights[:, None] * X).T, Y)
     else:
         if diag_only:
-            return np.sum(X * Y, axis=0)
+            # contract column-wise without materializing the elementwise product
+            return np.einsum('ij,ij->j', X, Y)
         else:
             return np.dot(X.T, Y)
 
@@ -544,10 +545,13 @@ def _M2_symmetric(Xvar, Yvar, mask_X=None, mask_Y=None, xsum=0, xconst=0, ysum=0
         else:
             Xvark = Xvar[:, column_selection]
             Yvark = Yvar[:, column_selection]
-        Cxxyy = _M2_dense(Xvar, Xvark, weights=weights, diag_only=diag_only) \
-                + _M2_dense(Yvar, Yvark, weights=weights, diag_only=diag_only)
-        Cxy = _M2_dense(Xvar, Yvark, weights=weights, diag_only=diag_only)
-        Cyx = _M2_dense(Yvar, Xvark, weights=weights, diag_only=diag_only)
+        # weight the (possibly column-selected, narrower) right operands once and reuse them
+        if weights is not None:
+            Xvark, Yvark = weights[:, None] * Xvark, weights[:, None] * Yvark
+        Cxxyy = _M2_dense(Xvar, Xvark, diag_only=diag_only) + _M2_dense(Yvar, Yvark, diag_only=diag_only)
+        Cxy = _M2_dense(Xvar, Yvark, diag_only=diag_only)
+        # without column selection, Y^T W X is the transpose of X^T W Y
+        Cyx = Cxy.T if column_selection is None else _M2_dense(Yvar, Xvark, diag_only=diag_only)
         Cxyyx = Cxy + Cyx
     else:
         # Check if one of the masks is not None, modify it and also adjust the constant columns:
