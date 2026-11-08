@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from numpy.testing import assert_, assert_array_almost_equal
+from numpy.testing import assert_, assert_array_almost_equal, assert_equal
 
 import deeptime.util.diff as diff
 
@@ -32,3 +32,29 @@ def test_tv_derivative_convergence_criterion(sparse):
     converged = diff.tv_derivative(x0, testf, alpha=0.01, tol=None, maxit=500, sparse=sparse)
     early = diff.tv_derivative(x0, testf, alpha=0.01, tol=1e-4, maxit=500, sparse=sparse)
     assert_(np.max(np.abs(early - converged)) < 0.02)
+
+
+@pytest.mark.parametrize('k, window_radius', [(1, 1), (1, 2), (2, 3), (3, 4)])
+def test_finite_difference_operator_midpoints(k, window_radius):
+    xs = np.cumsum(np.random.default_rng(7).uniform(0.01, 0.2, size=30))
+    op = diff.finite_difference_operator_midpoints(xs, k=k, window_radius=window_radius)
+    width = 2 * window_radius + 1
+    expected = np.zeros((len(xs) - 1, len(xs)))
+    for row in range(len(xs) - 1):
+        start = min(max(row - window_radius, 0), len(xs) - width)
+        window = slice(start, start + width)
+        expected[row, window] = diff.finite_difference_coefficients(.5 * (xs[row] + xs[row + 1]), list(xs[window]),
+                                                                    k=k)
+    assert_equal(op.nnz, (len(xs) - 1) * width)
+    assert_array_almost_equal(op.toarray(), expected)
+
+
+def test_finite_difference_errors():
+    with pytest.raises(ValueError):
+        diff.finite_difference_coefficients(0., [0., 1.], k=2)
+    with pytest.raises(ValueError):
+        diff.finite_difference_coefficients(2., [0., 1., 1.5], k=1)
+    with pytest.raises(ValueError):
+        diff.finite_difference_operator_midpoints(np.linspace(0., 1., 4), window_radius=2)
+    with pytest.raises(ValueError):
+        diff.finite_difference_operator_midpoints(np.zeros(1), window_radius=0)
