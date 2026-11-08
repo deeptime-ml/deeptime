@@ -74,9 +74,9 @@ class Kernel:
         n = data_2.shape[0]
 
         result = np.empty([m, n], dtype=data_1.dtype)
-        for i in range(m):
-            for j in range(n):
-                result[i, j] = self(data_1[i], data_2[j])
+        for i, x in enumerate(data_1):
+            for j, y in enumerate(data_2):
+                result[i, j] = self(x, y)
         return result
 
     def __mul__(self, other):
@@ -107,6 +107,10 @@ class ProductKernel(Kernel):
 
     def _evaluate(self, x, y) -> float:
         return self._k1(x, y) * self._k2(x, y)
+
+    def apply(self, data_1: np.ndarray, data_2: np.ndarray) -> np.ndarray:
+        result = self._k1.apply(data_1, data_2) * self._k2.apply(data_1, data_2)
+        return result.astype(data_1.dtype, copy=False)
 
     def __str__(self):
         return f"{self._k1} * {self._k2}"
