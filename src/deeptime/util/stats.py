@@ -334,7 +334,7 @@ def statistical_inefficiency(X, truncate_acf=True, mact=1.0):
     # mean-free data
     xflat = np.concatenate(X)
     Xmean = np.mean(xflat)
-    X0 = [x - Xmean for x in X]
+    X0 = [(x - Xmean, len(x)) for x in X]  # mean-free trajectories with their lengths
     # moments
     x2m = np.mean(xflat ** 2)
     del xflat, Xmean
@@ -343,12 +343,9 @@ def statistical_inefficiency(X, truncate_acf=True, mact=1.0):
     for lag in range(N):
         acf = 0.0
         n = 0
-        # cache partial sums
-        for x in X0:
-            Nx = len(x)  # length of this trajectory
+        for x, Nx in X0:
             if Nx > lag:  # only use trajectories that are long enough
-                prod = x[:Nx - lag] * x[lag:]
-                acf += np.sum(prod)
+                acf += np.dot(x[:Nx - lag], x[lag:])  # lagged product sum without a temporary
                 n += Nx - lag
         acf /= float(n)
         if acf <= 0 and truncate_acf:  # zero autocorrelation. Exit
