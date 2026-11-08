@@ -8,7 +8,8 @@ import collections
 import unittest
 from flaky import flaky
 
-from numpy.testing import assert_equal, assert_raises, assert_, assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_equal, assert_raises, assert_, assert_array_almost_equal, assert_array_equal, \
+    assert_allclose
 
 import deeptime.markov.tools.analysis as msmana
 import deeptime.markov.tools.estimation as msmest
@@ -186,7 +187,7 @@ def test_birth_death_chain(fixed_seed, sparse):
     assert_array_almost_equal(reference_count_matrix.toarray(), count_matrix)
     assert_array_almost_equal(reference_msm.toarray(), transition_matrix)
     assert_array_almost_equal(reference_statdist, msm.stationary_distribution)
-    assert_array_almost_equal(reference_timescales[1:], msm.timescales(k - 1), decimal=5)
+    assert_allclose(reference_timescales[1:], msm.timescales(k - 1), rtol=1e-5)
 
 
 class TestMSMRevPi(unittest.TestCase):

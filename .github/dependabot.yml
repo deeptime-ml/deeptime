@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Keeps the commit-SHA pins of the GitHub Actions in .github/workflows current; one grouped PR per week.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]

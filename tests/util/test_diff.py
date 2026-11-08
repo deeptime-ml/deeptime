@@ -7,9 +7,11 @@ import deeptime.util.diff as diff
 
 @pytest.mark.parametrize('sparse', [False, True])
 def test_tv_derivative(sparse):
+    # seeded: with unseeded noise the max error has a small but real chance of exceeding the threshold below
+    rng = np.random.default_rng(42)
     noise_variance = .08 * .08
     x0 = np.linspace(0, 2.0 * np.pi, 400)
-    testf = np.sin(x0) + np.random.normal(0.0, np.sqrt(noise_variance), x0.shape)
+    testf = np.sin(x0) + rng.normal(0.0, np.sqrt(noise_variance), x0.shape)
     true_deriv = np.cos(x0)
     df = diff.tv_derivative(x0, testf, alpha=0.01, tol=1e-5, fd_window_radius=5, sparse=sparse)
     max_diff = np.max(np.abs(df - true_deriv))

@@ -10,59 +10,141 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  # Compile the extension once per (OS, Python) and hand the wheel to the test shards below.
+  # A flaky shard can then be re-run without rebuilding anything.
+  build:
+    name: build (${{ matrix.os }}, ${{ matrix.python-version }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # setuptools-scm needs the tags for the version
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
       - name: Install OpenMP (macOS)
         if: runner.os == 'macOS'
         run: brew install libomp
 
-      - name: Install package with test dependencies
-        run: pip install ".[tests,plotting,units]" -v
+      # Compiler cache shared across runs on the same OS: a build with unchanged C++ sources takes seconds.
+      - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+
+      - name: Build wheel
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          CMAKE_C_COMPILER_LAUNCHER: sccache
+          CMAKE_CXX_COMPILER_LAUNCHER: sccache
+        # Built without isolation on purpose: an isolated build env lives in a fresh temp directory each run,
+        # which changes the include paths on the compile command line and defeats the compiler cache.
+        # Keep this list in sync with [build-system] requires in pyproject.toml.
+        run: |
+          uv pip install --system "scikit-build-core>=0.10" "pybind11>=3.1.0" numpy "setuptools-scm>=8" ninja cmake
+          uv build --wheel --no-build-isolation --python python --out-dir dist
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/*.whl
+          if-no-files-found: error
+          retention-days: 3
+
+  test:
+    name: test (${{ matrix.os }}, ${{ matrix.python-version }}, ${{ matrix.suite.name }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        # Shards are balanced by runtime: markov alone is about half of the suite.
+        suite:
+          - name: markov
+            paths: tests/markov
+          - name: decomposition
+            paths: tests/decomposition tests/basis tests/kernels tests/sindy tests/covariance tests/numeric
+          - name: misc
+            paths: tests/base tests/clustering tests/data tests/plots tests/util tests/test_readme.py --pyargs deeptime --doctest-modules
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      # One BLAS/OpenMP thread per xdist worker: two workers with default threading oversubscribe the
+      # 4-core runners and make the suite ~70% slower (measured on a 4-core slice).
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      - name: Install OpenMP (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist
+
+      - name: Install wheel with test dependencies
+        shell: bash
+        run: |
+          wheel=$(ls dist/*.whl)
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            # the tests extra pulls in torch on Linux only; the CPU build is a fraction of the size of the CUDA one
+            uv pip install --system torch --index-url https://download.pytorch.org/whl/cpu
+          fi
+          uv pip install --system "${wheel}[tests,plotting,units]"
 
       - name: Run tests
+        shell: bash
+        # Coverage is collected on one platform only; each shard uploads its own report and codecov merges them.
         run: >
-          python -m pytest tests/ -vv
-          --pyargs deeptime --doctest-modules
+          python -m pytest ${{ matrix.suite.paths }} -vv
           --durations=20 --numprocesses=2
-
-      - name: Run tests with coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        run: >
-          python -m pytest tests/ -vv
-          --pyargs deeptime --doctest-modules
-          --durations=20
-          --cov=deeptime --cov-report=xml
+          ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '--cov=deeptime --cov-report=xml' || '' }}
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: coverage.xml
+          flags: ${{ matrix.suite.name }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   cpp-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
 
@@ -77,14 +159,15 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
           cmake --build build-cpp --target run_tests
 
-  # Single check to require in branch protection; fails if any matrix job did not succeed.
   ci-ok:
     name: CI passed
     if: always()
-    needs: [test, cpp-tests]
+    needs: [build, test, cpp-tests]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check that all jobs succeeded
         run: |
+          test "${{ needs.build.result }}" = "success"
           test "${{ needs.test.result }}" = "success"
           test "${{ needs.cpp-tests.result }}" = "success"
