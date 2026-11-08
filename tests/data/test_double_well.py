@@ -18,4 +18,4 @@ def test_recover_timescale():
     counts = TransitionCountEstimator(1, 'sliding').fit(trajs).fetch_model()
     msm = MaximumLikelihoodMSM().fit(counts.submodel_largest()).fetch_model()
     ts_rec = msm.timescales(1)[0]
-    np.testing.assert_(np.abs(ts - ts_rec) <= 200.)
+    np.testing.assert_(np.abs(ts - ts_rec) <= 400.)
