@@ -76,3 +76,15 @@ jobs:
             -Dpybind11_DIR=$(python -m pybind11 --cmakedir) \
             -DCMAKE_BUILD_TYPE=Release
           cmake --build build-cpp --target run_tests
+
+  # Single check to require in branch protection; fails if any matrix job did not succeed.
+  ci-ok:
+    name: CI passed
+    if: always()
+    needs: [test, cpp-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that all jobs succeeded
+        run: |
+          test "${{ needs.test.result }}" = "success"
+          test "${{ needs.cpp-tests.result }}" = "success"
