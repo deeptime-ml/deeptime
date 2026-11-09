@@ -380,7 +380,8 @@ def expectation_sensitivity(T, a):
 
     """
     M = T.shape[0]
-    S = numpy.zeros((M, M))
-    for i in range(M):
-        S += a[i] * stationary_distribution_sensitivity(T, i)
-    return S
+    pi = stationary_distribution(T)
+    # the sensitivity is linear in a, so solve once with a as right-hand side;
+    # subtracting 1 pi^T (row-wise pi) makes T - I nonsingular, as in the fundamental matrix
+    phi = numpy.linalg.solve(T - numpy.identity(M) - pi, a)
+    return numpy.outer(pi, -numpy.dot(pi, a) - phi)
