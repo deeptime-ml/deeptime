@@ -61,36 +61,38 @@ def _pcca_connected_isa(eigenvectors, n_clusters):
                             "Probably the eigenvectors are incorrectly sorted. Cannot do PCCA."
 
     # local copy of the eigenvectors
-    c = eigenvectors[:, list(range(n_clusters))]
+    c = eigenvectors[:, :n_clusters]
 
     ortho_sys = np.copy(c)
-    max_dist = 0.0
 
     # representative states
     ind = np.zeros(n_clusters, dtype=np.int32)
+    chosen = np.zeros(n, dtype=bool)
+    ones = np.ones(n_clusters)
+
+    def farthest(points):
+        # first index of the largest positive row norm among non-representatives, 0 if there is none
+        dist = np.sqrt(np.square(points) @ ones)
+        return np.argmax(np.where((dist > 0) & ~chosen, dist, 0))
 
     # select the first representative as the most outlying point
-    for (i, row) in enumerate(c):
-        if np.linalg.norm(row, 2) > max_dist:
-            max_dist = np.linalg.norm(row, 2)
-            ind[0] = i
+    ind[0] = farthest(c)
 
     # translate coordinates to make the first representative the origin
     ortho_sys -= c[ind[0], None]
 
     # select the other m-1 representatives using a Gram-Schmidt orthogonalization
     for k in range(1, n_clusters):
-        max_dist = 0.0
-        temp = np.copy(ortho_sys[ind[k - 1]])
+        chosen[ind[k - 1]] = True
 
         # select next farthest point that is not yet a representative
-        for (i, row) in enumerate(ortho_sys):
-            row -= np.dot(np.dot(temp, np.transpose(row)), temp)
-            distt = np.linalg.norm(row, 2)
-            if distt > max_dist and i not in ind[0:k]:
-                max_dist = distt
-                ind[k] = i
+        ind[k] = farthest(ortho_sys)
         ortho_sys /= np.linalg.norm(ortho_sys[ind[k]], 2)
+
+        # project out the new representative; the first one is the origin and needs no projection
+        if k + 1 < n_clusters:
+            temp = np.copy(ortho_sys[ind[k]])
+            ortho_sys -= np.outer(ortho_sys @ temp, temp)
 
     # print "Final selection ", ind
 
