@@ -43,9 +43,9 @@ def tmatrix_cov(C, row=None):
         Z[:, ind[0], ind[1]] += alpha0[:, np.newaxis] * alpha
 
         """Covariance matrix"""
-        cov = Z / norm[:, np.newaxis, np.newaxis]
+        Z /= norm[:, np.newaxis, np.newaxis]
 
-        return cov
+        return Z
 
     else:
         alpha = C[row, :] + 1.0
