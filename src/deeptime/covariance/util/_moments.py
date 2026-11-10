@@ -257,14 +257,13 @@ def _sum(X, xmask=None, xconst=None, Y=None, ymask=None, yconst=None, symmetric=
     T = X.shape[0]
     # Check if weights are given:
     if weights is not None:
-        X = weights[:, None] * X
-        if Y is not None:
-            Y = weights[:, None] * Y
-    # compute raw sums on variable data
-    sx_raw = X.sum(axis=0)  # this is the mean before subtracting it.
-    sy_raw = 0
-    if Y is not None:
-        sy_raw = Y.sum(axis=0)
+        # weighted column sums as vector-matrix products, without a weighted copy of the data
+        sx_raw = weights.dot(X)
+        sy_raw = weights.dot(Y) if Y is not None else 0
+    else:
+        # compute raw sums on variable data
+        sx_raw = X.sum(axis=0)  # this is the mean before subtracting it.
+        sy_raw = Y.sum(axis=0) if Y is not None else 0
 
     # expand raw sums to full data
     if xmask is not None:
@@ -385,7 +384,15 @@ def _M2_dense(X, Y, weights=None, diag_only=False):
         if diag_only:
             return np.einsum('i,ij,ij->j', weights, X, Y)
         else:
-            return np.dot((weights[:, None] * X).T, Y)
+            # accumulate over blocks of frames, so that only one block of X is weighted at a time
+            blocksize = 1024
+            M2 = np.zeros((X.shape[1], Y.shape[1]), dtype=np.result_type(weights, X, Y))
+            buf = np.empty((min(blocksize, X.shape[0]), X.shape[1]), dtype=np.result_type(weights, X))
+            for start in range(0, X.shape[0], blocksize):
+                block = slice(start, start + blocksize)
+                wX = np.multiply(weights[block, None], X[block], out=buf[:len(X[block])])
+                M2 += np.dot(wX.T, Y[block])
+            return M2
     else:
         if diag_only:
             # contract column-wise without materializing the elementwise product
