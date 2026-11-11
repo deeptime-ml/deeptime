@@ -987,7 +987,7 @@ class HiddenMarkovModel(Model):
         ----------
         strong : bool, optional, default=True
             Whether the connectivity is evaluated based on a directed or on an undirected graph.
-        connectivity_threshold : str or int, optional, default=None
+        connectivity_threshold : str or int, optional, default='1/n'
             Minimum weight so that two states are considered connected.
 
         Returns

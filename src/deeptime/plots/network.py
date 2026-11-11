@@ -496,7 +496,7 @@ def plot_markov_model(msm: Union[MarkovStateModel, np.ndarray], pos=None, state_
     edge_labels : 'weights', None or a ndarray(n,n) with label strings. Optional, default='weights'
         Strings to be placed upon arrows. If None, no labels will be used.
         If 'weights', the elements of P will be used. If a matrix of strings is given by the user these will be used.
-    edge_label_format : str, optional, default='{2.e}'
+    edge_label_format : str, optional, default='{:.2e}'
         The numeric format to print the arrow labels.
     ax : matplotlib Axes object, optional, default=None
         The axes to plot to. When set to None a new Axes (and Figure) object will be used.
@@ -601,7 +601,7 @@ def plot_flux(flux: ReactiveFlux, state_sizes=None, flux_scale=1.0, state_scale=
         The numeric format to print the arrow labels.
     attribute_to_plot : str, optional, default='net_flux'
         specify the attribute of the flux object to plot.
-    show_committor: boolean (default=False)
+    show_committor: boolean (default=True)
         Print the committor value on the x-axis.
     ax : matplotlib.axes.Axes, optional, default=None
         The axes to plot to. When set to None, `gca()` is used.

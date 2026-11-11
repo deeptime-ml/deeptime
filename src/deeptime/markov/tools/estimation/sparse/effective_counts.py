@@ -254,7 +254,7 @@ def effective_count_matrix(dtrajs, lag, average='row', truncate_acf=True, mact=1
         True: When the normalized autocorrelation function passes through 0,
         it is truncated in order to avoid integrating random noise. This
         tends to lead to a slight underestimate of the autocorrelation time
-    mact : float, default=2.0
+    mact : float, default=1.0
         multiplier for the autocorrelation time. We tend to underestimate the
         autocorrelation time (and thus overestimate effective counts)
         because the autocorrelation function is truncated when it passes
