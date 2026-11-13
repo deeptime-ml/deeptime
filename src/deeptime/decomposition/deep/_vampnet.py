@@ -71,7 +71,7 @@ def sym_inverse(mat, epsilon: float = 1e-6, return_sqrt=False, mode='regularize'
         Cutoff for eigenvalues.
     return_sqrt: bool, optional, default = False
         if True, the square root of the inverse matrix is returned instead
-    mode: str, default='trunc'
+    mode: str, default='regularize'
         Whether to truncate eigenvalues if they are too small or to regularize them by taking the absolute value
         and adding a small positive constant. :code:`trunc` leads to truncation, :code:`regularize` leads to epsilon
         being added to the eigenvalues after taking the absolute value

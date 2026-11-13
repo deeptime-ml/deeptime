@@ -221,7 +221,7 @@ class DrunkardsWalk:
             Start coordinate on the grid.
         n_steps : int
             Maximum number of steps to simulate.
-        stop : bool, default=False
+        stop : bool, default=True
             Whether to stop the simulation once home or bar have been reached
         return_states : bool, default=False
             Whether to return states instead of coordinates. Default is False.
