@@ -223,6 +223,8 @@ class VAMP(EstimatorTransformer):
     def partial_fit(self, data, weights=None):
         r""" Updates the covariance estimates through a new batch of data.
 
+        If the lagtime has changed, a new covariance estimate is started before processing the batch.
+
         Parameters
         ----------
         data : tuple(ndarray, ndarray)
@@ -240,7 +242,7 @@ class VAMP(EstimatorTransformer):
         self : VAMP
             Reference to self.
         """
-        if self._covariance_estimator is None:
+        if self._covariance_estimator is None or self._covariance_estimator.lagtime != self.lagtime:
             self._covariance_estimator = self.covariance_estimator(lagtime=self.lagtime)
         x, y = to_dataset(data, lagtime=self.lagtime)[:]
         self._covariance_estimator.partial_fit((self.observable_transform(x),
@@ -456,6 +458,9 @@ class VAMP(EstimatorTransformer):
     def fetch_model(self) -> CovarianceKoopmanModel:
         r""" Finalizes current model and yields new :class:`CovarianceKoopmanModel`.
 
+        Fetching a model preserves the accumulated covariances, so subsequent calls to
+        :meth:`partial_fit` continue updating the estimate if the lagtime is unchanged.
+
         Returns
         -------
         model : CovarianceKoopmanModel
@@ -465,6 +470,7 @@ class VAMP(EstimatorTransformer):
             # This can only occur when partial_fit was called.
             # A call to fit, fit_from_timeseries, fit_from_covariances ultimately always leads to a call to
             # fit_from_covariances which sets the self._covariance_estimator to None.
-            self._model = self._decompose(self._covariance_estimator.fetch_model())
-            self._covariance_estimator = None
+            covariances = self._covariance_estimator.fetch_model()
+            if self._model is None or self._model.cov is not covariances:
+                self._model = self._decompose(covariances)
         return self._model
