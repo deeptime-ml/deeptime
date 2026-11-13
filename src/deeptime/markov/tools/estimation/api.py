@@ -224,7 +224,7 @@ def girsanov_reweighted_count_matrix(dtraj, lag, reweighting_factors,
         Discretized trajectory or list of discretized trajectories.
     lag : int
         Lagtime in trajectory steps.
-    reweighting: tuple
+    reweighting_factors: tuple
         Enforce a count-matrix with reweighting factors :code:`shape=(g,M)`. :code:`g` is the likelihood ratio between 
         probability measures with :code:`dim=(len(dtraj)-lag)`, if :code:`eta.shape==dtraj.shape`. :code:`M` 
         is the likelihood ratio between the path probabilitiy densities with :code:`dim=(len(dtraj)-lag)`,
@@ -810,9 +810,6 @@ def transition_matrix(C, reversible=False, mu=None, method='auto',
     return_statdist : bool, optional, default=False
         Optional parameter with reversible = True.
         If set to true, the stationary distribution is also returned
-    return_conv : bool, optional, default=False
-        Optional parameter with reversible = True.
-        If set to true, the likelihood history and the pi_change history is returned.
     warn_not_converged : bool, optional, default=True
         Prints a warning if not converged.
 
@@ -1124,7 +1121,7 @@ def sample_tmatrix(C, nsample=1, nsteps=None, reversible=False, mu=None, T0=None
         Count matrix
     nsample : int
         number of samples to be drawn
-    nstep : int, default=None
+    nsteps : int, default=None
         number of full Gibbs sampling sweeps internally done for each sample
         returned. This option is meant to ensure approximately uncorrelated
         samples for every call to sample(). If None, the number of steps will
@@ -1184,7 +1181,7 @@ def tmatrix_sampler(C, reversible=False, mu=None, T0=None, nsteps=None, prior='s
     T0 : ndarray, shape=(n, n) or scipy.sparse matrix
         Starting point of the MC chain of the sampling algorithm.
         Has to obey the required constraints.
-    nstep : int, default=None
+    nsteps : int, default=None
         number of full Gibbs sampling sweeps per sample. This option is meant
         to ensure approximately uncorrelated samples for every call to
         sample(). If None, the number of steps will be automatically determined
