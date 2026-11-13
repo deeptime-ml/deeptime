@@ -374,6 +374,10 @@ def _filter_variable_indices(mask, column_selection):
 # SECOND MOMENT MATRICES / COVARIANCES
 # ====================================================================================
 
+# size of the weighted copy of a block of frames in the weighted second moment
+_WEIGHTED_BLOCK_BYTES = 1 << 24
+
+
 def _M2_dense(X, Y, weights=None, diag_only=False):
     """ 2nd moment matrix using dense matrix computations.
 
@@ -385,9 +389,12 @@ def _M2_dense(X, Y, weights=None, diag_only=False):
             return np.einsum('i,ij,ij->j', weights, X, Y)
         else:
             # accumulate over blocks of frames, so that only one block of X is weighted at a time
-            blocksize = 1024
-            M2 = np.zeros((X.shape[1], Y.shape[1]), dtype=np.result_type(weights, X, Y))
-            buf = np.empty((min(blocksize, X.shape[0]), X.shape[1]), dtype=np.result_type(weights, X))
+            dtype = np.result_type(weights, X)
+            blocksize = max(_WEIGHTED_BLOCK_BYTES // (dtype.itemsize * max(X.shape[1], 1)), 4 * X.shape[1])
+            if X.shape[0] <= blocksize:
+                return np.dot((weights[:, None] * X).T, Y)
+            M2 = np.zeros((X.shape[1], Y.shape[1]), dtype=np.result_type(dtype, Y))
+            buf = np.empty((blocksize, X.shape[1]), dtype=dtype)
             for start in range(0, X.shape[0], blocksize):
                 block = slice(start, start + blocksize)
                 wX = np.multiply(weights[block, None], X[block], out=buf[:len(X[block])])
