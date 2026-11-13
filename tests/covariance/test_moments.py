@@ -4,6 +4,7 @@ import numpy as np
 __author__ = 'noe'
 
 from deeptime.covariance import moments_XX, moments_XXXY, moments_block
+from deeptime.covariance.util import _moments
 
 
 class TestMoments(unittest.TestCase):
@@ -602,3 +603,30 @@ class TestMoments(unittest.TestCase):
         self._test_moments_block_weighted(self.X_100_sparseconst, self.Y_100_sparseconst, self.cols_100,
                                           remove_mean=True, sparse_mode='sparse', sparse_tol=self.sparse_tol,
                                           weights=self.weights)
+
+
+N_COLS = 16
+FRAMES_PER_BLOCK = _moments._WEIGHTED_BLOCK_BYTES // (8 * N_COLS)
+
+
+def _check_weighted_moments(n_frames):
+    rng = np.random.default_rng(42)
+    X, Y = rng.standard_normal((n_frames, N_COLS)), rng.standard_normal((n_frames, N_COLS))
+    weights = rng.random(n_frames)
+    w, sx, sy, Cxx, Cxy = moments_XXXY(X, Y, weights=weights, sparse_mode='dense')
+    wX = weights[:, None] * X
+    np.testing.assert_allclose(w, weights.sum())
+    np.testing.assert_allclose(sx, wX.sum(axis=0), atol=1e-8)
+    np.testing.assert_allclose(sy, (weights[:, None] * Y).sum(axis=0), atol=1e-8)
+    np.testing.assert_allclose(Cxx, wX.T @ X, atol=1e-8)
+    np.testing.assert_allclose(Cxy, wX.T @ Y, atol=1e-8)
+
+
+def test_weighted_moments_single_block():
+    # largest input that is still weighted in one piece
+    _check_weighted_moments(FRAMES_PER_BLOCK)
+
+
+def test_weighted_moments_blocked():
+    # two full blocks and a ragged one
+    _check_weighted_moments(2 * FRAMES_PER_BLOCK + 1000)

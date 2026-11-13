@@ -257,14 +257,13 @@ def _sum(X, xmask=None, xconst=None, Y=None, ymask=None, yconst=None, symmetric=
     T = X.shape[0]
     # Check if weights are given:
     if weights is not None:
-        X = weights[:, None] * X
-        if Y is not None:
-            Y = weights[:, None] * Y
-    # compute raw sums on variable data
-    sx_raw = X.sum(axis=0)  # this is the mean before subtracting it.
-    sy_raw = 0
-    if Y is not None:
-        sy_raw = Y.sum(axis=0)
+        # weighted column sums as vector-matrix products, without a weighted copy of the data
+        sx_raw = weights.dot(X)
+        sy_raw = weights.dot(Y) if Y is not None else 0
+    else:
+        # compute raw sums on variable data
+        sx_raw = X.sum(axis=0)  # this is the mean before subtracting it.
+        sy_raw = Y.sum(axis=0) if Y is not None else 0
 
     # expand raw sums to full data
     if xmask is not None:
@@ -375,6 +374,10 @@ def _filter_variable_indices(mask, column_selection):
 # SECOND MOMENT MATRICES / COVARIANCES
 # ====================================================================================
 
+# size of the weighted copy of a block of frames in the weighted second moment
+_WEIGHTED_BLOCK_BYTES = 1 << 24
+
+
 def _M2_dense(X, Y, weights=None, diag_only=False):
     """ 2nd moment matrix using dense matrix computations.
 
@@ -385,7 +388,18 @@ def _M2_dense(X, Y, weights=None, diag_only=False):
         if diag_only:
             return np.einsum('i,ij,ij->j', weights, X, Y)
         else:
-            return np.dot((weights[:, None] * X).T, Y)
+            # accumulate over blocks of frames, so that only one block of X is weighted at a time
+            dtype = np.result_type(weights, X)
+            blocksize = max(_WEIGHTED_BLOCK_BYTES // (dtype.itemsize * max(X.shape[1], 1)), 4 * X.shape[1])
+            if X.shape[0] <= blocksize:
+                return np.dot((weights[:, None] * X).T, Y)
+            M2 = np.zeros((X.shape[1], Y.shape[1]), dtype=np.result_type(dtype, Y))
+            buf = np.empty((blocksize, X.shape[1]), dtype=dtype)
+            for start in range(0, X.shape[0], blocksize):
+                block = slice(start, start + blocksize)
+                wX = np.multiply(weights[block, None], X[block], out=buf[:len(X[block])])
+                M2 += np.dot(wX.T, Y[block])
+            return M2
     else:
         if diag_only:
             # contract column-wise without materializing the elementwise product
