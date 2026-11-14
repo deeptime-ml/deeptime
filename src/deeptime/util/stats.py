@@ -37,7 +37,33 @@ def confidence_interval(data, conf=0.95, remove_nans=False):
 
     data = ensure_array(data)
 
-    def _confidence_interval_1d(x):
+    def _compare(x, y, finite=False):
+        close = abs(np.subtract(x, y)) <= 1.e-8 + 1.e-5 * abs(y)
+        if finite:
+            return close
+        return ((close & np.isfinite(y)) | (x == y))[()]
+
+    def _isclose(a, b):
+        # Scalar equivalent of NumPy's default comparison, with fixed tolerances.
+        if type(a) is np.float64 and type(b) is np.float64:
+            x, y = a, b
+            finite = math.isfinite(x) and math.isfinite(y)
+        else:
+            x = a if isinstance(a, (int, float, complex, np.number)) else np.asanyarray(a)
+            y = b if isinstance(b, (int, float, complex)) else np.asanyarray(b)
+            dtype = getattr(y, 'dtype', None)
+            if dtype is not None and dtype.kind != 'm' and dtype != np.float64:
+                y = np.asanyarray(y, dtype=np.result_type(y, 1.))
+            elif isinstance(y, int):
+                y = float(y)
+            finite = (isinstance(x, (float, np.float64)) and isinstance(y, (float, np.float64))
+                      and math.isfinite(x) and math.isfinite(y))
+        if finite:
+            return _compare(x, y, finite=True)
+        with np.errstate(invalid='ignore'):
+            return _compare(x, y)
+
+    def _confidence_interval_1d(x, sorted_x=None, has_nan=None):
         """
         Computes the mean and alpha-confidence interval of the given sample set
 
@@ -53,22 +79,28 @@ def confidence_interval(data, conf=0.95, remove_nans=False):
         """
         assert x.ndim == 1, x.ndim
 
-        nan = np.isnan(x)
         if remove_nans:
-            x = x[np.where(~nan)]
+            x = x[np.where(~np.isnan(x))]
             if len(x) == 0:
                 return np.nan, np.nan, np.nan
         else:
-            if np.any(nan):
+            if has_nan is None:
+                has_nan = np.any(np.isnan(x))
+            if has_nan:
                 return np.nan, np.nan, np.nan
 
-        d_min, d_max = np.min(x), np.max(x)
+        # Reuse sorted extrema, but retain reduction semantics for signed zeros.
+        if (sorted_x is not None and x.dtype.kind in 'biuf'
+                and sorted_x[0] != 0 and sorted_x[-1] != 0):
+            d_min, d_max = sorted_x[0], sorted_x[-1]
+        else:
+            d_min, d_max = np.min(x), np.max(x)
 
-        if np.isclose(d_min, d_max):
+        if _isclose(d_min, d_max):
             return d_min, d_min, d_max
 
         m = np.mean(x)
-        x = np.sort(x)
+        x = np.sort(x) if sorted_x is None else sorted_x
 
         # index of the mean
         im = np.searchsorted(x, m)
@@ -87,7 +119,7 @@ def confidence_interval(data, conf=0.95, remove_nans=False):
     def _compute_interval_boundary(p, x):
         i1 = max(0, int(math.floor(p)))
         i2 = min(len(x) - 1, int(math.ceil(p)))
-        if np.isclose(x[i1], x[i2]):  # catch infs
+        if _isclose(x[i1], x[i2]):  # catch infs
             return x[i1]
         else:
             return x[i1] + (p - i1) * (x[i2] - x[i1])
@@ -121,9 +153,18 @@ def confidence_interval(data, conf=0.95, remove_nans=False):
             else:
                 raise NotImplementedError('Only supporting arrays of dimension 2 and 3 as yet.')
 
+        # Batch the sorts without changing the order of the mean reductions.
+        sorted_data = None
+        nan_columns = None
+        if type(data) is np.ndarray and data.ndim in (2, 3) and data.dtype.kind in 'biufc' and not remove_nans:
+            sorted_data = np.sort(data, axis=0)
+            nan_columns = np.any(np.isnan(data), axis=0)
+
         for i in np.ndindex(data[0].shape):
             col = _column(data, i)
-            _, lower[i], upper[i] = _confidence_interval_1d(col)
+            sorted_col = None if sorted_data is None else _column(sorted_data, i)
+            has_nan = None if nan_columns is None else nan_columns[i]
+            _, lower[i], upper[i] = _confidence_interval_1d(col, sorted_col, has_nan)
 
         return lower, upper
 
