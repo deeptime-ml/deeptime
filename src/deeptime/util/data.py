@@ -31,25 +31,29 @@ def sliding_window(seq, radius=1, fixed_width=False):
         raise ValueError(f"the sequence needs to have at least length 2*radius+1 but has length={len(seq)}.")
     it = iter(seq)
     iterable = (next(it, None) for _ in range(1 + radius if not fixed_width else 1 + 2 * radius))
-    window = deque(iterable, maxlen=2 * radius + 1)
-    if not fixed_width:
-        yield np.array(window)
-        append = window.append
-        for e in it:
-            append(e)
-            yield np.array(window)
-        while len(window) > radius + 1:
-            window.popleft()
-            yield np.array(window)
-    else:
-        for _ in range(radius + 1):
-            yield np.array(window)
-        append = window.append
-        for e in it:
-            append(e)
-            yield np.array(window)
+    window = list(deque(iterable, maxlen=2 * radius + 1))
+    width = 2 * radius + 1
+    array = np.array
+    for _ in range(radius + 1 if fixed_width else 1):
+        yield array(window)
+    append = window.append
+    pop = window.pop
+    growth = width - len(window)
+    for e in it:
+        append(e)
+        if growth:
+            growth -= 1
+        else:
+            pop(0)
+        yield array(window)
+    if fixed_width:
         for _ in range(radius):
-            yield np.array(window)
+            yield array(window)
+    else:
+        while len(window) > radius + 1:
+            pop(0)
+            yield array(window)
+
 
 
 def timeshifted_split(inputs, lagtime: int, chunksize: int = 1000, stride: int = 1, n_splits: Optional[int] = None,
