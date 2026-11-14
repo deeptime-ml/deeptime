@@ -64,7 +64,7 @@ def confidence_interval(data, conf=0.95, remove_nans=False):
 
         d_min, d_max = np.min(x), np.max(x)
 
-        if np.isclose(d_min, d_max):
+        if math.isclose(d_min, d_max, rel_tol=1e-5, abs_tol=1e-8):
             return d_min, d_min, d_max
 
         m = np.mean(x)
@@ -87,7 +87,7 @@ def confidence_interval(data, conf=0.95, remove_nans=False):
     def _compute_interval_boundary(p, x):
         i1 = max(0, int(math.floor(p)))
         i2 = min(len(x) - 1, int(math.ceil(p)))
-        if np.isclose(x[i1], x[i2]):  # catch infs
+        if math.isclose(x[i1], x[i2], rel_tol=1e-5, abs_tol=1e-8):  # catch infs
             return x[i1]
         else:
             return x[i1] + (p - i1) * (x[i2] - x[i1])
