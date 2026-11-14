@@ -20,11 +20,11 @@ def count_matrix_coo2_mult(dtrajs, lag, reweighting_factors=None,
 
     Parameters
     ----------
-    dtraj : list of ndarrays
+    dtrajs : list of ndarrays
         discrete trajectories
     lag : int
         Lagtime in trajectory steps
-    reweighting: tuple, optional
+    reweighting_factors: tuple, optional
         Enforce a count-matrix with reweighting factors shape=(g,logM), :footcite:`schaefer2024implementation`. g is the state-space 
         probability density ratio. logM is the pre-expression of the M reweighting factor, 
         negative sign and exponent is realised in summation over the path of length lagtime.  
