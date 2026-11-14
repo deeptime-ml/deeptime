@@ -55,21 +55,57 @@ def find_bottleneck(F, A, B):
         # there is no stronger residual sub-network
         return row[-1], col[-1], coo_matrix((n, n))
     else:
+        # Reuse ranked edges for each suffix search without sparse conversion.
+        starts = np.asarray(A)
+        ends = np.asarray(B)
+        use_adjacency = (
+            starts.ndim == ends.ndim == 1
+            and starts.dtype.kind in "iu" and ends.dtype.kind in "iu"
+            and np.all((starts >= 0) & (starts < n))
+            and np.all((ends >= 0) & (ends < n))
+            and np.all(val > 0)
+            and np.unique(row * np.int64(n) + col).size == val.size
+        )
         """Bisection of flux-value array"""
         r = val.size
         l = 0
-        while r - l > 1:
-            m = np.int64(np.floor(0.5 * (r + l)))
-            valtmp = val[m:]
-            rowtmp = row[m:]
-            coltmp = col[m:]
-            C = coo_matrix((valtmp, (rowtmp, coltmp)), shape=(n, n))
-            """Check if there is a path connecting A and B by
-            iterating over all starting nodes in A"""
-            if has_connection(C, A, B):
-                l = 1 * m
-            else:
-                r = 1 * m
+        if use_adjacency:
+            # Add edges in rank order and extend only the newly reachable nodes.
+            adjacency = [[] for _ in range(n)]
+            seen = [False] * n
+            targets = [False] * n
+            for node in starts:
+                seen[node] = True
+            for node in ends:
+                targets[node] = True
+            connected = any(targets[node] for node in starts)
+            pending = []
+            edges = zip(row[::-1].tolist(), col[::-1].tolist())
+            for offset, (source, target) in enumerate(edges):
+                adjacency[source].append(target)
+                if seen[source] and not seen[target]:
+                    seen[target] = True
+                    pending.append(target)
+                while pending:
+                    node = pending.pop()
+                    if targets[node]:
+                        connected = True
+                        break
+                    for neighbor in adjacency[node]:
+                        if not seen[neighbor]:
+                            seen[neighbor] = True
+                            pending.append(neighbor)
+                if connected:
+                    l = val.size - 1 - offset
+                    break
+        else:
+            while r - l > 1:
+                m = np.int64(np.floor(0.5 * (r + l)))
+                C = coo_matrix((val[m:], (row[m:], col[m:])), shape=(n, n))
+                if has_connection(C, A, B):
+                    l = 1 * m
+                else:
+                    r = 1 * m
 
         E_AB = coo_matrix((val[l + 1:], (row[l + 1:], col[l + 1:])), shape=(n, n))
         b1 = row[l]
@@ -122,8 +158,17 @@ def has_path(nodes, A, B):
         True if there exists a path, else False
 
     """
-    x1 = np.intersect1d(nodes, A).size > 0
-    x2 = np.intersect1d(nodes, B).size > 0
+    node_array = np.asarray(nodes)
+    start_array = np.asarray(A)
+    end_array = np.asarray(B)
+    if all(array.dtype.kind in "biufc" for array in (node_array, start_array, end_array)):
+        # Compare endpoint sets in batches without sorting or deduplication.
+        node_array = node_array.ravel()[:, None]
+        x1 = bool((node_array == start_array.ravel()).any())
+        x2 = bool((node_array == end_array.ravel()).any())
+    else:
+        x1 = np.intersect1d(nodes, A).size > 0
+        x2 = np.intersect1d(nodes, B).size > 0
     return x1 and x2
 
 
@@ -145,20 +190,27 @@ def pathway(F, A, B):
         The dominant reaction-pathway
 
     """
+    def contains(states, node):
+        # Recursive searches normally use one integer endpoint.
+        if (type(states) is list and len(states) == 1
+                and type(states[0]) in (int, np.int32, np.int64)):
+            return states[0] == node
+        return np.any(states == node)
+
     if F.nnz == 0:
         raise PathwayError('no more pathways left: Flux matrix does not contain any positive entries')
     b1, b2, F = find_bottleneck(F, A, B)
-    if np.any(A == b1):
+    if contains(A, b1):
         wL = [b1, ]
-    elif np.any(B == b1):
+    elif contains(B, b1):
         raise PathwayError(("Roles of vertices b1 and b2 are switched."
                             "This should never happen for a correct flux network"
                             "obtained from a reversible transition meatrix."))
     else:
         wL = pathway(F, A, [b1, ])
-    if np.any(B == b2):
+    if contains(B, b2):
         wR = [b2, ]
-    elif np.any(A == b2):
+    elif contains(A, b2):
         raise PathwayError(("Roles of vertices b1 and b2 are switched."
                             "This should never happen for a correct flux network"
                             "obtained from a reversible transition meatrix."))
@@ -183,7 +235,7 @@ def capacity(F, path):
         Capacity (min. current of path)
 
     """
-    F = F.todok()
+    F = F.todok(copy=False)
     L = len(path)
     currents = np.zeros(L - 1)
     for l in range(L - 1):
@@ -210,8 +262,8 @@ def remove_path(F, path):
         The updated flux network
 
     """
-    c = capacity(F, path)
     F = F.todok()
+    c = capacity(F, path)
     L = len(path)
     for l in range(L - 1):
         i = path[l]
