@@ -145,3 +145,23 @@ def estimate_markov_model(lagtime, data, hidden, bayesian, n_hidden=2, return_es
         else:
             est = BayesianHMM.default(n_hidden_states=n_hidden, lagtime=lagtime, dtrajs=data).fit(data)
     return (est, est.fetch_model()) if return_estimator else est.fetch_model()
+
+
+def fuzz(test, examples_per_round=50):
+    """Turns an argument-free Hypothesis test into a pytest test that runs rounds of `examples_per_round` examples
+    until --fuzz-seconds are spent; at least one round. Marked `fuzz`, so `pytest -m fuzz` selects all of them."""
+    import pytest
+    from hypothesis import settings, HealthCheck
+
+    rounds = settings(max_examples=examples_per_round, derandomize=False, deadline=None, print_blob=True,
+                      suppress_health_check=[HealthCheck.too_slow])(test)
+
+    def wrapper(request):
+        stop = time.monotonic() + request.config.getoption("fuzz_seconds")
+        rounds()
+        while time.monotonic() < stop:
+            rounds()
+
+    wrapper.__name__, wrapper.__qualname__, wrapper.__doc__ = test.__name__, test.__qualname__, test.__doc__
+    wrapper.__module__ = test.__module__
+    return pytest.mark.fuzz(wrapper)
