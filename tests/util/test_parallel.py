@@ -30,13 +30,13 @@ class TestParallel(TestCase):
     def test_value_negative(self):
         # raise error if using other negative number as parameter
         self.assertRaisesRegex(ValueError, 
-                               f"n_jobs can only be -1 \(in which case it will be determined from hardware\), None \(in which case one will be used\) or a positive number, but was -2.",
+                               r"n_jobs can only be -1 \(in which case it will be determined from hardware\), None \(in which case one will be used\) or a positive number, but was -2.",
                                handle_n_jobs, -2)
     
     def test_value_non_integer(self):
         # raise error if using other positive non-integer as parameter
         self.assertRaisesRegex(ValueError, 
-                               f"n_jobs can only be -1 \(in which case it will be determined from hardware\), None \(in which case one will be used\) or a positive number, but was 3.5.",
+                               r"n_jobs can only be -1 \(in which case it will be determined from hardware\), None \(in which case one will be used\) or a positive number, but was 3.5.",
                                handle_n_jobs, 3.5)
 
 if __name__ == '__main__':

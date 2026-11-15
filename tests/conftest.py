@@ -39,3 +39,8 @@ def fixed_seed():
 @pytest.fixture(params=[False, True], ids=lambda x: f"{'sparse' if x else 'dense'}")
 def sparse_mode(request):
     yield request.param
+
+
+def pytest_addoption(parser):
+    parser.addoption("--fuzz-seconds", type=float, default=float(os.environ.get("DEEPTIME_FUZZ_SECONDS", 1.)),
+                     help="time each @fuzz test keeps generating examples (default 1, or $DEEPTIME_FUZZ_SECONDS)")

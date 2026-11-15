@@ -144,4 +144,17 @@ Bug reports, feature requests and pull requests are welcome on
 [developer guide](https://deeptime-ml.github.io/latest/index_dev.html) describes the
 estimator/model interfaces, how to build from source and how to run the tests.
 
+### Fuzz tests
+
+Property tests marked `fuzz` use [Hypothesis](https://hypothesis.readthedocs.io) and run for about a second
+each in the regular test suite. To fuzz them for longer, select them with `-m fuzz` and give a time budget
+per test:
+
+```bash
+pytest tests -m fuzz --fuzz-seconds 600 -n 8
+```
+
+The budget can also be set with `DEEPTIME_FUZZ_SECONDS`. Failing inputs are shrunk to a minimal example and
+saved in `.hypothesis/`, so the next run replays them first.
+
 Deeptime is distributed under the [LGPL-3.0](https://github.com/deeptime-ml/deeptime/blob/main/LICENSE.txt) license.

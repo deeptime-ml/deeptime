@@ -65,6 +65,7 @@ tests = [
     'coverage[toml]',
     'pytest-xdist>=2.5.0',
     'flaky>=3.7.0',
+    'hypothesis>=6.100',
     'tqdm>=4.64.0',
     "networkx",
     "matplotlib",
@@ -107,6 +108,7 @@ DEEPTIME_BUILD_CPP_TESTS = "OFF"
 
 [tool.pytest.ini_options]
 filterwarnings = ["once", "ignore::UserWarning"]
+markers = ["fuzz: Hypothesis property test that runs for --fuzz-seconds"]
 
 [tool.setuptools_scm]
 
